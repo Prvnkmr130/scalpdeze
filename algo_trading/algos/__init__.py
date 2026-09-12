@@ -79,6 +79,12 @@ def load_all_algos(
     # Explicit import of active production trading strategies (lazy to avoid circular imports)
     from algo_trading.algos.indian_opt_trde_polars import indian_options_trading_algo_polars
     from algo_trading.algos.crypto_opt_trde_polars import crypto_options_trading_algo_polars
+    try:
+        from algo_trading.algos.scraped_signal_engine import run_scraped_signal_cycle
+        has_scraped = True
+    except ImportError:
+        run_scraped_signal_cycle = None
+        has_scraped = False
 
     # Strategy-to-Broker Identifier Mapping
     # (Matches broker_name code, api_provider code, or account keywords)
@@ -87,6 +93,10 @@ def load_all_algos(
         (indian_options_trading_algo_polars, ["zerodha", "kotak_neo", "kotak", "upstox", "angel", "groww", "shoonya", "finvasia", "indian"]),
         (crypto_options_trading_algo_polars, ["coinswitch", "delta", "delta_exchange", "delta_india", "coindcx", "crypto", "bitcoin"]),
     ]
+    if has_scraped and run_scraped_signal_cycle:
+        strategy_candidates.append(
+            (run_scraped_signal_cycle, ["u_exchange", "scraped", "us", "thin_client", "signal"])
+        )
 
     if target_strategy:
         target_lower = target_strategy.strip().lower()

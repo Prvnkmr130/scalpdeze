@@ -58,7 +58,9 @@ class AppConfig:
 
     # ─── Core & Security ─────────────────────────────────────────
     APP_MODE: str = _get_str("APP_MODE", "debug")            # "debug" | "production"
-    TIMEZONE: str = _get_str("APP_TIMEZONE", "Asia/Kolkata")  # IANA timezone string
+    TIMEZONE: str = _get_str("APP_TIMEZONE", "America/New_York")  # IANA timezone string
+    MARKET_EXCHANGE: str = _get_str("MARKET_EXCHANGE", "U_EXCHANGE")
+    ENABLE_PRE_MARKET: bool = _get_bool("ENABLE_PRE_MARKET", False)
     SECRET_KEY: str = os.getenv(
         "DJANGO_SECRET_KEY",
         "CHANGE-ME-in-production-use-python-c-import-secrets-secrets.token_urlsafe(64)"
@@ -72,12 +74,38 @@ class AppConfig:
     BIND_PORT: int = _get_int("BIND_PORT", 8000)
 
     # ─── Database ────────────────────────────────────────────────
+    DB_ENGINE: str = _get_str("DB_ENGINE", "postgresql")     # "postgresql" | "sqlite"
     DB_NAME: str = _get_str("POSTGRES_DB", "algo_trading")
     DB_USER: str = _get_str("POSTGRES_USER", "appuser")
     DB_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "")
     DB_HOST: str = _get_str("POSTGRES_HOST", "127.0.0.1")    # localhost for single container
     DB_PORT: int = _get_int("POSTGRES_PORT", 5432)
 
+    # ─── Scrapling Stealth Browser Sniffer ─────────────────────────
+    PORTAL_URL: str = _get_str("PORTAL_URL", "")
+    PORTAL_USERNAME: str = _get_str("PORTAL_USERNAME", "")
+    PORTAL_PASSWORD: str = os.getenv("PORTAL_PASSWORD", "")
+    PORTAL_TOTP_SECRET: str = os.getenv("PORTAL_TOTP_SECRET", "")
+    SCRAPLING_HEADLESS: bool = _get_bool("SCRAPLING_HEADLESS", True)
+    SCRAPLING_MAX_RAM_MB: int = _get_int("SCRAPLING_MAX_RAM_MB", 800)
+
+    # ─── Dual-NIC Network Failover ────────────────────────────────
+    PRIMARY_NIC_ALIAS: str = _get_str("PRIMARY_NIC_ALIAS", "Ethernet")
+    BACKUP_NIC_ALIAS: str = _get_str("BACKUP_NIC_ALIAS", "Wi-Fi")
+    PING_PROBE_HOSTS: str = _get_str("PING_PROBE_HOSTS", "8.8.8.8,1.1.1.1")
+    FAILOVER_CHECK_INTERVAL: float = float(_get_str("FAILOVER_CHECK_INTERVAL", "5.0"))
+    FAILOVER_HYSTERESIS_SECONDS: float = float(_get_str("FAILOVER_HYSTERESIS_SECONDS", "60.0"))
+
+    # ─── Hardware & Thermal Protection (Thin Client PC) ────────────
+    THERMAL_WARNING_TEMP: float = float(_get_str("THERMAL_WARNING_TEMP", "75.0"))
+    THERMAL_CRITICAL_TEMP: float = float(_get_str("THERMAL_CRITICAL_TEMP", "82.0"))
+    THERMAL_CHECK_INTERVAL: float = float(_get_str("THERMAL_CHECK_INTERVAL", "30.0"))
+
+    # ─── Power Lifecycle (Task Scheduler RTC Wake & Hibernate) ───
+    ENABLE_AUTO_WAKE: bool = _get_bool("ENABLE_AUTO_WAKE", True)
+    ENABLE_AUTO_HIBERNATE: bool = _get_bool("ENABLE_AUTO_HIBERNATE", True)
+    WAKE_TIME_ET: str = _get_str("WAKE_TIME_ET", "09:15")
+    HIBERNATE_TIME_ET: str = _get_str("HIBERNATE_TIME_ET", "16:15")
 
     # ─── WebSocket Broker Toggles ─────────────────────────────────
     # Add a new line for each broker. Format: WS_BROKER_<NAME>_ENABLED
@@ -85,14 +113,14 @@ class AppConfig:
     WS_BROKER_B_ENABLED: bool = _get_bool("WS_BROKER_B_ENABLED", True)
     WS_BROKER_C_ENABLED: bool = _get_bool("WS_BROKER_C_ENABLED", False)
 
-    # ─── Performance & Memory Controls (Small Cloud Instance Optimized) ────────
+    # ─── Performance & Memory Controls (Thin Client / Local PC Optimized) ───
     UVICORN_WORKERS: int = _get_int("UVICORN_WORKERS", 1)    # Keep 1 for 1-2 vCPU
     UVICORN_BACKLOG: int = _get_int("UVICORN_BACKLOG", 128)
-    DB_CONN_POOL_SIZE: int = _get_int("DB_CONN_POOL_SIZE", 4) # Lean default for memory-constrained cloud environments
+    DB_CONN_POOL_SIZE: int = _get_int("DB_CONN_POOL_SIZE", 4) # Lean default
     DB_POOL_MIN: int = _get_int("DB_POOL_MIN", 0)             # Scale down to 0 idle connections to conserve RAM
     DB_POOL_MAX: int = _get_int("DB_POOL_MAX", 4)
     Q_CLUSTER_WORKERS: int = _get_int("Q_CLUSTER_WORKERS", 1) # 1 worker for low-memory footprint
-    POLARS_MAX_THREADS: int = _get_int("POLARS_MAX_THREADS", 2) # Restrict Polars/Rayon thread pool size
+    POLARS_MAX_THREADS: int = _get_int("POLARS_MAX_THREADS", os.cpu_count() or 4) # Physical cores on thin client
     ALGO_WORKER_COUNT: int = _get_int("ALGO_WORKER_COUNT", 1)
     ALGO_LOOP_INTERVAL_SECONDS: float = float(_get_str("ALGO_LOOP_INTERVAL_SECONDS", "2.0"))  # Sequential execution interval
     ALGO_INFO_SYNC_CYCLES: int = _get_int("ALGO_INFO_SYNC_CYCLES", 15)  # Trading loop iterations between AlgoInfo state syncs

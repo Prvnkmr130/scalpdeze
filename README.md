@@ -39,44 +39,26 @@ Full architectural documentation, database schemas, and code references are avai
 
 ---
 
-## Server Installation & Hardening
+## Windows Thin Client Setup & Supervisor
 
-A comprehensive Linux server hardening and application installer script is provided in [`install.sh`](install.sh). For the complete end-to-end walkthrough including SSH deploy key provisioning and permission configurations, consult the **[Complete Server Installation Guide](docs/installation_guide.md)**.
+The platform runs natively on **Windows 10/11 Local Thin Client PCs** with zero Docker or Linux dependencies.
 
-Run as root on your server:
-```bash
-chmod +x install.sh
-sudo ./install.sh
+### 1. Automated Setup (`setup_windows.ps1`)
+Installs Python dependencies, Playwright Chromium binaries, and registers the Windows Task Scheduler RTC Wake task:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup_windows.ps1
 ```
 
----
-
-## Automated Deployment & Container Management
-
-The [`deploy.sh`](deploy.sh) script automates Git pulls, Docker image rebuilds, migrations, and healthchecks:
-
-```bash
-# Interactive menu
-./deploy.sh
-
-# Full deployment (Git pull + build/restart + migrations + auto-prune + healthcheck)
-./deploy.sh --deploy
-
-# Full deployment without Docker system prune
-./deploy.sh --deploy --no-prune
-
-# Complete clean reinstall (wipes containers & volumes, then full rebuild)
-./deploy.sh --reinstall
-
-# Deploy local changes without pulling from remote git
-./deploy.sh --deploy --no-pull
-
-# Restart containers only without rebuilding
-./deploy.sh --restart-only
+### 2. Supervisor Watchdog (`run_watchdog.ps1`)
+Supervises the signal engine with automatic crash recovery and graceful shutdown:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_watchdog.ps1
 ```
 
-> [!TIP]
-> **Fast Incremental Builds**: Docker builds leverage Astral's official `uv` binary and BuildKit cache mounts (`uv sync --frozen`), reducing incremental build times to **5–15 seconds**. `deploy.sh` automatically relaxes Docker socket permissions and Git multi-user safe directories.
+### 3. Direct Django CLI
+```powershell
+python manage.py run_scraped_algo
+```
 
 ---
 

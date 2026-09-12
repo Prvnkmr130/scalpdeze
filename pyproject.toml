@@ -26,6 +26,15 @@ dependencies = [
     "polars>=1.43.2",
     "pyarrow>=25.0.1",
     "numpy>=2.0.0",
+    # ── Windows Thin Client & Scrapling Stealth Engine ──
+    "scrapling>=0.3.0",
+    "playwright>=1.40.0",
+    "patchright>=1.40.0",
+    "windows-toasts>=1.1.0; sys_platform == 'win32'",
+    "pystray>=0.19.5",
+    "psutil>=5.9.0",
+    "wmi>=1.5.1; sys_platform == 'win32'",
+    "keyboard>=0.13.5",
 ]
 
 [tool.uv]

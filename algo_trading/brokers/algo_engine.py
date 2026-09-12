@@ -165,7 +165,10 @@ def run_engine_sequential(loop_interval_seconds: Optional[float] = None) -> None
             gc.collect()
             try:
                 import ctypes
-                ctypes.CDLL("libc.so.6").malloc_trim(0)
+                if sys.platform == "win32":
+                    ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+                else:
+                    ctypes.CDLL("libc.so.6").malloc_trim(0)
             except Exception:
                 pass
 

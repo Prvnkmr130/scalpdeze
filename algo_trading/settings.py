@@ -86,63 +86,75 @@ _is_management_cmd = (
     )
 )
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config.DB_NAME,
-        "USER": config.DB_USER,
-        "PASSWORD": config.DB_PASSWORD,
-        "HOST": config.DB_HOST,
-        "PORT": str(config.DB_PORT),
-        "CONN_MAX_AGE": 0,     # Managed by connection pool
-        "CONN_HEALTH_CHECKS": True,                  # Django 6: verify connection before reuse
-    },
-    "remote": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("REMOTE_DB_NAME", "algo_trading"),
-        "USER": os.getenv("REMOTE_DB_USER", "appuser"),
-        "PASSWORD": os.getenv("REMOTE_DB_PASSWORD", ""),
-        "HOST": os.getenv("REMOTE_DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("REMOTE_DB_PORT", "5432"),
-        "CONN_MAX_AGE": 0,
-        "CONN_HEALTH_CHECKS": True,
-    }
-}
-
-# Connection pool configuration:
-# Differentiates web server (uvicorn/daphne) from linear management commands / worker processes.
-# Uses min_size: 0 and max_idle: 30 so idle connections cleanly terminate and free Postgres backend RAM.
-if _is_management_cmd:
-    DATABASES["default"]["OPTIONS"] = {
-        "pool": {
-            "min_size": 0,
-            "max_size": 2,
-            "timeout": 10.0,
-            "max_idle": 15,
+if config.DB_ENGINE == "sqlite":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "algo_trading.sqlite3",
         },
-    }
-elif config.is_debug:
-    # In DEBUG / Local mode, provide an expanded connection pool (min_size: 1, max_size: 6)
-    # to handle interactive developer tools, log analyzer, and parallel browser tabs without pool starvation.
-    DATABASES["default"]["OPTIONS"] = {
-        "pool": {
-            "min_size": getattr(config, "DB_POOL_MIN", 1),
-            "max_size": max(int(getattr(config, "DB_POOL_MAX", 6)), 6),
-            "timeout": 10.0,
-            "max_idle": 30,
-        },
+        "remote": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "remote.sqlite3",
+        }
     }
 else:
-    # In PRODUCTION, keep a lean pool (min_size: 0, default max_size: 2-3) to protect PostgreSQL
-    # max_connections and avoid CPU / RAM stress from idle persistent backend processes.
-    DATABASES["default"]["OPTIONS"] = {
-        "pool": {
-            "min_size": 0,
-            "max_size": getattr(config, "DB_POOL_MAX", getattr(config, "DB_CONN_POOL_SIZE", 2)),
-            "timeout": 10.0,
-            "max_idle": 30,
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config.DB_NAME,
+            "USER": config.DB_USER,
+            "PASSWORD": config.DB_PASSWORD,
+            "HOST": config.DB_HOST,
+            "PORT": str(config.DB_PORT),
+            "CONN_MAX_AGE": 0,     # Managed by connection pool
+            "CONN_HEALTH_CHECKS": True,                  # Django 6: verify connection before reuse
         },
+        "remote": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("REMOTE_DB_NAME", "algo_trading"),
+            "USER": os.getenv("REMOTE_DB_USER", "appuser"),
+            "PASSWORD": os.getenv("REMOTE_DB_PASSWORD", ""),
+            "HOST": os.getenv("REMOTE_DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("REMOTE_DB_PORT", "5432"),
+            "CONN_MAX_AGE": 0,
+            "CONN_HEALTH_CHECKS": True,
+        }
     }
+
+    # Connection pool configuration:
+    # Differentiates web server (uvicorn/daphne) from linear management commands / worker processes.
+    # Uses min_size: 0 and max_idle: 30 so idle connections cleanly terminate and free Postgres backend RAM.
+    if _is_management_cmd:
+        DATABASES["default"]["OPTIONS"] = {
+            "pool": {
+                "min_size": 0,
+                "max_size": 2,
+                "timeout": 10.0,
+                "max_idle": 15,
+            },
+        }
+    elif config.is_debug:
+        # In DEBUG / Local mode, provide an expanded connection pool (min_size: 1, max_size: 6)
+        # to handle interactive developer tools, log analyzer, and parallel browser tabs without pool starvation.
+        DATABASES["default"]["OPTIONS"] = {
+            "pool": {
+                "min_size": getattr(config, "DB_POOL_MIN", 1),
+                "max_size": max(int(getattr(config, "DB_POOL_MAX", 6)), 6),
+                "timeout": 10.0,
+                "max_idle": 30,
+            },
+        }
+    else:
+        # In PRODUCTION, keep a lean pool (min_size: 0, default max_size: 2-3) to protect PostgreSQL
+        # max_connections and avoid CPU / RAM stress from idle persistent backend processes.
+        DATABASES["default"]["OPTIONS"] = {
+            "pool": {
+                "min_size": 0,
+                "max_size": getattr(config, "DB_POOL_MAX", getattr(config, "DB_CONN_POOL_SIZE", 2)),
+                "timeout": 10.0,
+                "max_idle": 30,
+            },
+        }
 
 # ═══════════════════════════════════════════════════════════════
 # CHANNEL LAYERS — WebSocket message bus
