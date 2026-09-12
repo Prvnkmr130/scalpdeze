@@ -174,13 +174,15 @@ class ScraplingBrowserSniffer:
         self,
         portal_url: str = "",
         headless: bool = True,
-        profiles_dir: str = "profiles",
+        profiles_dir: Optional[str] = None,
         data_store: Optional[SniffedMarketDataStore] = None,
         on_data_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ):
+        from algo_trading.app_config import config
         self.portal_url = portal_url
         self.headless = headless
-        self.profiles_dir = os.path.abspath(profiles_dir)
+        resolved_profiles = profiles_dir or config.PROFILES_DIR
+        self.profiles_dir = os.path.abspath(resolved_profiles)
         self.data_store = data_store or SniffedMarketDataStore()
         self.on_data_callback = on_data_callback
 

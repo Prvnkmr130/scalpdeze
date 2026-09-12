@@ -24,11 +24,19 @@ def send_windows_toast(
     title: str,
     body: str,
     audio_chime: bool = True,
-    visualizer_url: str = "http://localhost:8000/admin/kalai/candle-visualizer/",
+    visualizer_url: Optional[str] = None,
 ) -> bool:
     """
     Dispatches a native Windows 10/11 desktop toast notification.
     """
+    from algo_trading.app_config import config
+
+    if visualizer_url is None:
+        visualizer_url = f"http://localhost:{config.BIND_PORT}/admin/kalai/candle-visualizer/"
+
+    if config.is_debug and not title.startswith("[DEBUG]"):
+        title = f"[DEBUG] {title}"
+
     logger.info(f"[DESKTOP_TOAST] {title}: {body}")
 
     if sys.platform != "win32":
@@ -43,7 +51,7 @@ def send_windows_toast(
             ToastButton,
         )
 
-        toaster = InteractableWindowsToaster("DeltaZero26 Signal Engine")
+        toaster = InteractableWindowsToaster(f"DeltaZero26 [{config.APP_INSTANCE.upper()}]")
         toast = Toast()
         toast.text_fields = [title, body]
 
@@ -51,8 +59,9 @@ def send_windows_toast(
             toast.audio = ToastAudio(sound=AudioUri.Default, looping=False)
 
         # Action button to open local visualizer
+        target_vis = visualizer_url
         def _open_vis(args):
-            webbrowser.open(visualizer_url)
+            webbrowser.open(target_vis)
 
         toast.AddAction(ToastButton("Open Visualizer", arguments="open_vis"))
         toast.on_activated = _open_vis
@@ -60,7 +69,7 @@ def send_windows_toast(
         toaster.show_toast(toast)
         return True
     except ImportError:
-        # Fallback to win10toast if installed, or powershell
+        # Fallback to powershell notification
         try:
             ps_script = f"""
             [reflection.assembly]::loadwithpartialname('System.Windows.Forms') | Out-Null
@@ -79,10 +88,21 @@ def send_windows_toast(
         return False
 
 
-def setup_global_hotkey(toggle_callback: Callable[[], bool]) -> bool:
+def setup_global_hotkey(
+    toggle_callback: Callable[[], bool],
+    hotkey: Optional[str] = None,
+) -> bool:
     """
-    Registers the global emergency hotkey: Ctrl + Alt + B
+    Registers a global emergency hotkey (e.g. Ctrl + Alt + B for prod, Ctrl + Shift + B for debug).
+    Gracefully logs and avoids crashing if hotkey is already registered by another instance.
     """
+    from algo_trading.app_config import config
+
+    hk = hotkey or config.HOTKEY_TOGGLE_BROWSER
+    if not hk:
+        logger.info("No global hotkey configured for this instance.")
+        return True
+
     try:
         import keyboard
 
@@ -94,11 +114,11 @@ def setup_global_hotkey(toggle_callback: Callable[[], bool]) -> bool:
                 audio_chime=False,
             )
 
-        keyboard.add_hotkey("ctrl+alt+b", _on_hotkey)
-        logger.info("Registered global emergency hotkey: Ctrl + Alt + B (Browser Visibility Toggle).")
+        keyboard.add_hotkey(hk.lower().strip(), _on_hotkey)
+        logger.info(f"Registered global emergency hotkey: {hk.upper()} (Browser Visibility Toggle).")
         return True
     except Exception as e:
-        logger.debug(f"Could not register global hotkey via keyboard library: {e}")
+        logger.warning(f"Could not register global hotkey '{hk}': {e} (Another instance may be using it)")
         return False
 
 
@@ -114,16 +134,22 @@ class WindowsTrayApplet:
         on_recycle_memory: Optional[Callable[[], None]] = None,
         on_hibernate_pc: Optional[Callable[[], None]] = None,
         on_exit: Optional[Callable[[], None]] = None,
-        visualizer_url: str = "http://localhost:8000/admin/kalai/candle-visualizer/",
+        visualizer_url: Optional[str] = None,
+        instance_name: Optional[str] = None,
+        bind_port: Optional[int] = None,
     ):
+        from algo_trading.app_config import config
+
+        self.instance_name = (instance_name or config.APP_INSTANCE).upper()
+        self.bind_port = bind_port or config.BIND_PORT
         self.on_toggle_browser = on_toggle_browser
         self.on_switch_nic = on_switch_nic
         self.on_recycle_memory = on_recycle_memory
         self.on_hibernate_pc = on_hibernate_pc
         self.on_exit = on_exit
-        self.visualizer_url = visualizer_url
+        self.visualizer_url = visualizer_url or f"http://localhost:{self.bind_port}/admin/kalai/candle-visualizer/"
 
-        self.current_status = "ACTIVE"  # "ACTIVE" (Green), "STANDBY" (Yellow), "FAILOVER" (Red)
+        self.current_status = "ACTIVE"  # "ACTIVE", "STANDBY", "FAILOVER"
         self._icon = None
         self._tray_thread: Optional[threading.Thread] = None
 
@@ -135,12 +161,20 @@ class WindowsTrayApplet:
             img = Image.new("RGBA", (64, 64), color=(0, 0, 0, 0))
             draw = ImageDraw.Draw(img)
 
+            # Active color based on instance
+            if self.instance_name in ("DEBUG", "DEV"):
+                active_color = (0, 188, 212, 255)   # Cyan for Debug
+            elif self.instance_name not in ("PROD", "PRODUCTION", "DEFAULT"):
+                active_color = (52, 152, 219, 255)  # Blue for Instance N
+            else:
+                active_color = (46, 204, 113, 255)  # Green for Prod
+
             color_map = {
-                "green": (46, 204, 113, 255),
+                "green": active_color,
                 "yellow": (241, 196, 15, 255),
                 "red": (231, 76, 60, 255),
             }
-            fill_col = color_map.get(color.lower(), (46, 204, 113, 255))
+            fill_col = color_map.get(color.lower(), active_color)
             draw.ellipse((8, 8, 56, 56), fill=fill_col, outline=(255, 255, 255, 200), width=3)
             return img
         except ImportError:
@@ -161,7 +195,7 @@ class WindowsTrayApplet:
         img = self._create_image(color)
         if img:
             self._icon.icon = img
-        self._icon.title = f"DeltaZero26 Signal Engine [{self.current_status}]"
+        self._icon.title = f"DeltaZero26 [{self.instance_name}] [{self.current_status}]"
 
     def _menu_toggle_browser(self, icon, item):
         if self.on_toggle_browser:

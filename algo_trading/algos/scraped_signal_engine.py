@@ -29,7 +29,6 @@ import polars as pl
 from algo_trading.algos.indian_candle_engine import (
     group_by_rolling_window,
     update_candles_incremental,
-    calculate_heikin_ashi_indicators,
 )
 from algo_trading.algos.logger import algo_logger
 from algo_trading.algos.u_exchange_session import (
@@ -43,6 +42,53 @@ from algo_trading.brokers.sniffer.browser_sniffer import SniffedMarketDataStore
 
 logger = logging.getLogger("algo_trading.algos.scraped_signal_engine")
 _CURRENT_ALGO_NAME = "u_exchange_signal_engine"
+
+
+def calculate_heikin_ashi_indicators(candles: pl.DataFrame) -> pl.DataFrame:
+    """
+    Computes Heikin-Ashi candlestick transformations (ha_open, ha_high, ha_low, ha_close)
+    over standard OHLC candles in Polars.
+    """
+    if candles.is_empty() or "open" not in candles.columns or "close" not in candles.columns:
+        return pl.DataFrame()
+
+    df = candles.sort("date_time", descending=False)
+    records = df.to_dicts()
+    if not records:
+        return pl.DataFrame()
+
+    ha_records = []
+    prev_ha_open = None
+    prev_ha_close = None
+
+    for idx, row in enumerate(records):
+        o = float(row.get("open") or 0.0)
+        h = float(row.get("high") or o)
+        l = float(row.get("low") or o)
+        c = float(row.get("close") or o)
+
+        ha_close = (o + h + l + c) / 4.0
+
+        if idx == 0 or prev_ha_open is None or prev_ha_close is None:
+            ha_open = (o + c) / 2.0
+        else:
+            ha_open = (prev_ha_open + prev_ha_close) / 2.0
+
+        ha_high = max(h, ha_open, ha_close)
+        ha_low = min(l, ha_open, ha_close)
+
+        row_copy = dict(row)
+        row_copy["ha_open"] = ha_open
+        row_copy["ha_high"] = ha_high
+        row_copy["ha_low"] = ha_low
+        row_copy["ha_close"] = ha_close
+
+        ha_records.append(row_copy)
+        prev_ha_open = ha_open
+        prev_ha_close = ha_close
+
+    return pl.DataFrame(ha_records)
+
 
 
 class ScrapedSignalEngine:

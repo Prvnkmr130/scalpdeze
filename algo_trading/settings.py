@@ -87,14 +87,15 @@ _is_management_cmd = (
 )
 
 if config.DB_ENGINE == "sqlite":
+    sqlite_name = "algo_trading.sqlite3" if config.APP_INSTANCE in ("prod", "production", "default") else f"algo_trading_{config.APP_INSTANCE}.sqlite3"
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "algo_trading.sqlite3",
+            "NAME": BASE_DIR / sqlite_name,
         },
         "remote": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "remote.sqlite3",
+            "NAME": BASE_DIR / f"remote_{config.APP_INSTANCE}.sqlite3",
         }
     }
 else:
@@ -263,7 +264,7 @@ LOGGING = {
         },
         "app_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": BASE_DIR / "logs" / "app.log",
+            "filename": BASE_DIR / "logs" / f"app_{config.APP_INSTANCE}.log",
             "maxBytes": 5 * 1024 * 1024,       # 5 MB
             "backupCount": 3,
             "formatter": "verbose",

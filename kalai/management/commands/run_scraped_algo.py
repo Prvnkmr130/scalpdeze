@@ -39,6 +39,19 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--instance",
+            type=str,
+            default=None,
+            help="Instance identifier (e.g. prod, debug, 2, 3, sim). Defaults to APP_INSTANCE in config.",
+        )
+        parser.add_argument(
+            "--mode",
+            type=str,
+            choices=["production", "debug"],
+            default=None,
+            help="Execution mode (production or debug). Defaults to APP_MODE in config.",
+        )
+        parser.add_argument(
             "--no-tray",
             action="store_true",
             help="Disable the Windows System Tray icon applet.",
@@ -61,17 +74,27 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from algo_trading.app_config import config
+
+        instance_name = (options.get("instance") or config.APP_INSTANCE).lower()
+        is_prod = instance_name in ("prod", "production", "default")
+
+        # Non-production instances automatically run in safe mode:
+        # Zero host PC hibernation tampering, zero network route metric switching
+        if not is_prod:
+            options["no_power"] = True
+            options["no_failover"] = True
+
         self.stdout.write(
             self.style.SUCCESS("==================================================================")
         )
         self.stdout.write(
-            self.style.SUCCESS(" Starting Windows Thin Client Quantitative Signal Engine (U-Exchange)")
+            self.style.SUCCESS(f" Starting Windows Thin Client Signal Engine [INSTANCE: {instance_name.upper()}] (Port: {config.BIND_PORT})")
         )
         self.stdout.write(
             self.style.SUCCESS("==================================================================")
         )
 
-        from algo_trading.app_config import config
         from algo_trading.algos.logger import algo_logger
         from algo_trading.algos.u_exchange_session import (
             UExchangeSession,
@@ -104,6 +127,7 @@ class Command(BaseCommand):
         browser_sniffer = ScraplingBrowserSniffer(
             portal_url=config.PORTAL_URL,
             headless=config.SCRAPLING_HEADLESS,
+            profiles_dir=config.PROFILES_DIR,
             data_store=data_store,
         )
 
@@ -121,7 +145,8 @@ class Command(BaseCommand):
 
         # Desktop Toast & Signal Dispatcher
         def _on_signal_detected(sig: dict):
-            title = f"[SIGNAL ALERT] {sig.get('path_name', 'Signal')}"
+            prefix = "" if is_prod else f"[{instance_name.upper()}] "
+            title = f"{prefix}[SIGNAL ALERT] {sig.get('path_name', 'Signal')}"
             body = (
                 f"Trend: {sig.get('trend')} | CE: {sig.get('buy_signal_CE')} | "
                 f"PE: {sig.get('buy_signal_PE')} | Account: {sig.get('account_id')}"
@@ -162,6 +187,8 @@ class Command(BaseCommand):
             running = False
 
         tray = WindowsTrayApplet(
+            instance_name=instance_name,
+            bind_port=config.BIND_PORT,
             on_toggle_browser=browser_sniffer.toggle_visibility,
             on_recycle_memory=lambda: asyncio.run(browser_sniffer.soft_memory_recycle()),
             on_hibernate_pc=lambda: power_manager.hibernate_pc(force=True),
@@ -170,7 +197,10 @@ class Command(BaseCommand):
 
         if not options["no_tray"]:
             tray.start_background()
-            setup_global_hotkey(browser_sniffer.toggle_visibility)
+            setup_global_hotkey(
+                browser_sniffer.toggle_visibility,
+                hotkey=config.HOTKEY_TOGGLE_BROWSER,
+            )
 
         def _signal_handler(signum, frame):
             _request_shutdown()

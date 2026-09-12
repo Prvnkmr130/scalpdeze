@@ -11,7 +11,18 @@ Usage:
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from dotenv import load_dotenv
+
+# Hierarchical .env loading based on APP_INSTANCE or ENV_FILE
+_env_file = os.getenv("ENV_FILE")
+_raw_instance = os.getenv("APP_INSTANCE")
+if _env_file and os.path.exists(_env_file):
+    load_dotenv(_env_file, override=True)
+elif _raw_instance and os.path.exists(f".env.{_raw_instance}"):
+    load_dotenv(f".env.{_raw_instance}", override=True)
+elif os.path.exists(".env"):
+    load_dotenv(".env")
 
 
 def _clean_env(val: str) -> str:
@@ -52,12 +63,66 @@ def _get_bool(key: str, default: bool) -> bool:
     return cleaned in ("true", "1", "yes")
 
 
+def _get_default_instance() -> str:
+    inst = os.getenv("APP_INSTANCE")
+    if inst:
+        return _clean_env(inst).lower()
+    mode = os.getenv("APP_MODE", "prod").lower()
+    if mode in ("production", "prod"):
+        return "prod"
+    if mode in ("debug", "dev"):
+        return "debug"
+    return "prod"
+
+
+def _get_default_port(instance: str) -> int:
+    # Check for instance-specific override first, e.g. BIND_PORT_DEBUG
+    inst_upper = instance.upper()
+    if os.getenv(f"BIND_PORT_{inst_upper}"):
+        return _get_int(f"BIND_PORT_{inst_upper}", 8001)
+
+    if instance in ("prod", "production", "default"):
+        return _get_int("BIND_PORT", 8000)
+    if instance in ("debug", "dev"):
+        return 8001
+    if instance.isdigit():
+        return 8000 + int(instance)
+    return 8002 + (abs(hash(instance)) % 24)
+
+
+def _get_default_db(instance: str) -> str:
+    inst_upper = instance.upper()
+    if os.getenv(f"POSTGRES_DB_{inst_upper}"):
+        return _clean_env(os.getenv(f"POSTGRES_DB_{inst_upper}"))
+
+    if instance in ("prod", "production", "default"):
+        return _get_str("POSTGRES_DB", "algo_trading")
+    if instance in ("debug", "dev"):
+        return "algo_trading_debug"
+    return f"algo_trading_{instance}"
+
+
+def _get_default_hotkey(instance: str) -> str:
+    env_hotkey = os.getenv("HOTKEY_TOGGLE_BROWSER")
+    if env_hotkey is not None:
+        return _clean_env(env_hotkey)
+    if instance in ("prod", "production", "default"):
+        return "ctrl+alt+b"
+    if instance in ("debug", "dev"):
+        return "ctrl+shift+b"
+    return ""
+
+
 @dataclass(frozen=True, slots=True)
 class AppConfig:
     """Immutable application configuration loaded once at startup."""
 
-    # ─── Core & Security ─────────────────────────────────────────
-    APP_MODE: str = _get_str("APP_MODE", "debug")            # "debug" | "production"
+    # ─── Instance & Mode Identity ────────────────────────────────
+    APP_INSTANCE: str = field(default_factory=_get_default_instance)
+    APP_MODE: str = field(default_factory=lambda: _get_str(
+        "APP_MODE",
+        "production" if _get_default_instance() in ("prod", "production", "default") else "debug"
+    ))
     TIMEZONE: str = _get_str("APP_TIMEZONE", "America/New_York")  # IANA timezone string
     MARKET_EXCHANGE: str = _get_str("MARKET_EXCHANGE", "U_EXCHANGE")
     ENABLE_PRE_MARKET: bool = _get_bool("ENABLE_PRE_MARKET", False)
@@ -71,14 +136,14 @@ class AppConfig:
     # ─── Network / Host ──────────────────────────────────────────
     ALLOWED_HOSTS: str = _get_str("ALLOWED_HOSTS", "*")      # Comma-separated
     BIND_ADDRESS: str = _get_str("BIND_ADDRESS", "0.0.0.0")
-    BIND_PORT: int = _get_int("BIND_PORT", 8000)
+    BIND_PORT: int = field(default_factory=lambda: _get_default_port(_get_default_instance()))
 
-    # ─── Database ────────────────────────────────────────────────
+    # ─── Database (PostgreSQL 18 default / SQLite optional) ──────
     DB_ENGINE: str = _get_str("DB_ENGINE", "postgresql")     # "postgresql" | "sqlite"
-    DB_NAME: str = _get_str("POSTGRES_DB", "algo_trading")
-    DB_USER: str = _get_str("POSTGRES_USER", "appuser")
-    DB_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "")
-    DB_HOST: str = _get_str("POSTGRES_HOST", "127.0.0.1")    # localhost for single container
+    DB_NAME: str = field(default_factory=lambda: _get_default_db(_get_default_instance()))
+    DB_USER: str = _get_str("POSTGRES_USER", "postgres")    # default postgres superuser or appuser
+    DB_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
+    DB_HOST: str = _get_str("POSTGRES_HOST", "127.0.0.1")
     DB_PORT: int = _get_int("POSTGRES_PORT", 5432)
 
     # ─── Scrapling Stealth Browser Sniffer ─────────────────────────
@@ -88,6 +153,8 @@ class AppConfig:
     PORTAL_TOTP_SECRET: str = os.getenv("PORTAL_TOTP_SECRET", "")
     SCRAPLING_HEADLESS: bool = _get_bool("SCRAPLING_HEADLESS", True)
     SCRAPLING_MAX_RAM_MB: int = _get_int("SCRAPLING_MAX_RAM_MB", 800)
+    PROFILES_DIR: str = field(default_factory=lambda: _get_str("PROFILES_DIR", f"profiles/{_get_default_instance()}"))
+    HOTKEY_TOGGLE_BROWSER: str = field(default_factory=lambda: _get_default_hotkey(_get_default_instance()))
 
     # ─── Dual-NIC Network Failover ────────────────────────────────
     PRIMARY_NIC_ALIAS: str = _get_str("PRIMARY_NIC_ALIAS", "Ethernet")
@@ -102,8 +169,14 @@ class AppConfig:
     THERMAL_CHECK_INTERVAL: float = float(_get_str("THERMAL_CHECK_INTERVAL", "30.0"))
 
     # ─── Power Lifecycle (Task Scheduler RTC Wake & Hibernate) ───
-    ENABLE_AUTO_WAKE: bool = _get_bool("ENABLE_AUTO_WAKE", True)
-    ENABLE_AUTO_HIBERNATE: bool = _get_bool("ENABLE_AUTO_HIBERNATE", True)
+    ENABLE_AUTO_WAKE: bool = field(default_factory=lambda: _get_bool(
+        "ENABLE_AUTO_WAKE",
+        _get_default_instance() in ("prod", "production", "default")
+    ))
+    ENABLE_AUTO_HIBERNATE: bool = field(default_factory=lambda: _get_bool(
+        "ENABLE_AUTO_HIBERNATE",
+        _get_default_instance() in ("prod", "production", "default")
+    ))
     WAKE_TIME_ET: str = _get_str("WAKE_TIME_ET", "09:15")
     HIBERNATE_TIME_ET: str = _get_str("HIBERNATE_TIME_ET", "16:15")
 
@@ -140,11 +213,11 @@ class AppConfig:
 
     @property
     def is_debug(self) -> bool:
-        return self.APP_MODE == "debug"
+        return self.APP_MODE.lower() in ("debug", "dev") or self.APP_INSTANCE not in ("prod", "production", "default")
 
     @property
     def is_production(self) -> bool:
-        return self.APP_MODE == "production"
+        return not self.is_debug
 
     @property
     def allowed_hosts_list(self) -> list[str]:
