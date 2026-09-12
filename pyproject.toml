@@ -1,0 +1,65 @@
+[project]
+name = "algo-trading"
+version = "1.0.0"
+description = "Low-latency WebSocket trading data aggregator"
+requires-python = ">=3.14"
+dependencies = [
+    "django>=6.1.1,<6.2",
+    "channels>=4.2",
+    "daphne>=4.1",
+    "uvicorn[standard]>=0.34",
+    "psycopg[binary,pool]>=3.2",
+    "python-dotenv>=1.0",
+    "whitenoise>=6.8",
+    "django-q2>=1.7.0",
+    # ── Async WebSocket engine ──
+    "asyncpg>=0.30",
+    "aiohttp>=3.11",
+    "python-socketio[asyncio_client]>=5.12",
+    "orjson>=3.10",
+    "kiteconnect>=5.2.0",
+    "pyotp>=2.9.0",
+    "cryptography>=43.0",
+    "requests>=2.31",
+    "websocket-client>=1.8.0",
+    "openpyxl>=3.1.5",
+    "polars>=1.43.2",
+    "pyarrow>=25.0.1",
+    "numpy>=2.0.0",
+]
+
+[tool.uv]
+override-dependencies = [
+    "autobahn>=22.4.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "pytest>=8.0",
+    "pytest-django>=4.9",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "algo_trading.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+exclude = [
+    ".venv",
+    "algo_trading/algos/zerodha_opt_trde_reference.py",
+    "algo_trading/algos/zerodha_opt_trde_optimized.py",
+    "algo_trading/brokers/feeds/hs_websocket.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E402", "E501", "W291", "W292", "W293"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+

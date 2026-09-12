@@ -1,0 +1,8 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'kalai/css/broker_admin_hints.css' %}?v={% now 'U' %}">
+<script src="{% static 'kalai/js/broker_admin_hints.js' %}?v={% now 'U' %}"></script>
+{% endblock %}

@@ -1,0 +1,712 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static humanize %}
+
+{% block title %}🔍 Log Anomaly Analyzer | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .analyzer-container {
+        max-width: 1300px;
+        margin: 20px auto 40px auto;
+        padding: 24px 28px;
+        background: var(--body-bg, #ffffff) !important;
+        border: 1px solid var(--hairline-color, #e2e8f0) !important;
+        border-radius: 12px;
+        color: var(--body-fg, #334155) !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .analyzer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--hairline-color, #e2e8f0) !important;
+        padding-bottom: 18px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 14px;
+    }
+    
+    .analyzer-header h1 {
+        font-size: 22px !important;
+        font-weight: 700 !important;
+        color: var(--body-fg, #0f172a) !important;
+        margin: 0 0 4px 0 !important;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .analyzer-header-subtitle {
+        font-size: 13px;
+        color: var(--body-quiet-color, #64748b) !important;
+    }
+
+    .analyzer-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        text-decoration: none !important;
+        transition: all 0.15s ease;
+        cursor: pointer;
+    }
+
+    .btn-export {
+        background: #16a34a !important;
+        color: #ffffff !important;
+        border: 1px solid #15803d !important;
+    }
+    .btn-export:hover {
+        background: #15803d !important;
+        box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+    }
+
+    .btn-rerun {
+        background: #0284c7 !important;
+        color: #ffffff !important;
+        border: 1px solid #0369a1 !important;
+    }
+    .btn-rerun:hover {
+        background: #0369a1 !important;
+    }
+
+    .btn-filter {
+        background: var(--darkened-bg, #f1f5f9) !important;
+        color: var(--body-fg, #334155) !important;
+        border: 1px solid var(--hairline-color, #cbd5e1) !important;
+    }
+    .btn-filter.active {
+        background: #0284c7 !important;
+        color: #ffffff !important;
+        border-color: #0369a1 !important;
+    }
+
+    .debug-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        background: #e0f2fe;
+        color: #0369a1;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* On-Demand Launch Card */
+    .launch-panel {
+        background: var(--darkened-bg, #f8fafc) !important;
+        border: 1px solid var(--hairline-color, #e2e8f0) !important;
+        border-radius: 12px;
+        padding: 36px 28px;
+        margin-bottom: 28px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .launch-icon {
+        font-size: 40px;
+        margin-bottom: 12px;
+    }
+
+    .launch-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--body-fg, #0f172a);
+        margin-bottom: 8px;
+    }
+
+    .launch-desc {
+        font-size: 13px;
+        color: var(--body-quiet-color, #64748b);
+        max-width: 680px;
+        margin: 0 auto 24px auto;
+        line-height: 1.5;
+    }
+
+    .launch-form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .launch-params-row {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .param-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        text-align: left;
+    }
+
+    .param-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--body-quiet-color, #64748b);
+    }
+
+    .param-select {
+        padding: 8px 12px;
+        font-size: 13px;
+        border-radius: 6px;
+        border: 1px solid var(--hairline-color, #cbd5e1);
+        background: var(--body-bg, #ffffff);
+        color: var(--body-fg, #334155);
+        min-width: 140px;
+    }
+
+    .launch-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 32px;
+        font-size: 14px;
+        font-weight: 700;
+        background: #0284c7 !important;
+        color: #ffffff !important;
+        border: 1px solid #0369a1 !important;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+        transition: all 0.15s ease;
+    }
+
+    .launch-btn:hover {
+        background: #0369a1 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .kpi-card {
+        padding: 16px 20px;
+        border-radius: 10px;
+        background: var(--darkened-bg, #f8fafc) !important;
+        border: 1px solid var(--hairline-color, #e2e8f0) !important;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .kpi-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        color: var(--body-quiet-color, #64748b) !important;
+    }
+
+    .kpi-value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--body-fg, #0f172a) !important;
+    }
+
+    /* Filter Toolbar */
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--darkened-bg, #f8fafc) !important;
+        border: 1px solid var(--hairline-color, #e2e8f0) !important;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .time-selector {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .filter-dropdowns {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-select {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--hairline-color, #cbd5e1);
+        background: var(--body-bg, #ffffff);
+        color: var(--body-fg, #334155);
+    }
+
+    /* Rules Drawer */
+    .rules-card {
+        background: var(--darkened-bg, #f8fafc) !important;
+        border: 1px solid var(--hairline-color, #e2e8f0) !important;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+    }
+
+    .rules-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--body-fg, #0f172a);
+    }
+
+    .rules-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+    }
+
+    .rule-item {
+        background: var(--body-bg, #ffffff) !important;
+        border: 1px solid var(--hairline-color, #e2e8f0) !important;
+        border-radius: 8px;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .rule-id {
+        font-family: monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: #0284c7;
+    }
+
+    .rule-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--body-fg, #0f172a);
+    }
+
+    .rule-desc {
+        font-size: 11px;
+        color: var(--body-quiet-color, #64748b);
+        line-height: 1.4;
+    }
+
+    /* Anomaly Table */
+    .section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--body-fg, #0f172a);
+        margin: 0 0 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        border: 1px solid var(--hairline-color, #e2e8f0) !important;
+        border-radius: 8px;
+        margin-bottom: 28px;
+    }
+
+    .table-modern {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        text-align: left;
+    }
+
+    .table-modern th {
+        background: var(--darkened-bg, #f8fafc) !important;
+        color: var(--body-quiet-color, #64748b) !important;
+        font-weight: 700;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--hairline-color, #e2e8f0) !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 11px;
+    }
+
+    .table-modern td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--hairline-color, #e2e8f0) !important;
+        color: var(--body-fg, #334155) !important;
+        vertical-align: middle;
+    }
+
+    .table-modern tr:hover td {
+        background: var(--darkened-bg, #f8fafc) !important;
+    }
+
+    /* Badges */
+    .badge-sev {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .badge-sev-CRITICAL { background: #fee2e2; color: #b91c1c; }
+    .badge-sev-HIGH { background: #ffedd5; color: #c2410c; }
+    .badge-sev-MEDIUM { background: #fef9c3; color: #a16207; }
+    .badge-sev-LOW { background: #f1f5f9; color: #475569; }
+
+    .badge-cat {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--darkened-bg, #f1f5f9);
+        color: var(--body-fg, #334155);
+        border: 1px solid var(--hairline-color, #cbd5e1);
+    }
+
+    .code-snippet {
+        font-family: monospace;
+        font-size: 11px;
+        background: var(--darkened-bg, #f1f5f9);
+        padding: 4px 8px;
+        border-radius: 4px;
+        word-break: break-all;
+        max-width: 450px;
+        display: block;
+    }
+
+    .empty-banner {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--body-quiet-color, #64748b);
+        background: var(--darkened-bg, #f8fafc);
+        border-radius: 8px;
+        border: 1px dashed var(--hairline-color, #cbd5e1);
+    }
+</style>
+<script>
+function onExecuteAnalysis(form) {
+    const btn = form.querySelector('.launch-btn');
+    if (btn) {
+        btn.innerHTML = '<span>⏳ Ingesting & Analyzing Logs...</span>';
+        btn.style.opacity = '0.75';
+        btn.style.pointerEvents = 'none';
+    }
+}
+</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:algo_monitoring' %}">{% translate '⚡ Algo Monitoring' %}</a>
+&rsaquo; {% translate '🔍 Log Anomaly Analyzer' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="analyzer-container">
+
+    <!-- Header Section -->
+    <div class="analyzer-header">
+        <div>
+            <h1>
+                <span>🔍 Log Anomaly Analyzer</span>
+                <span class="debug-badge">⚡ DEBUG MODE ONLY</span>
+            </h1>
+            <div class="analyzer-header-subtitle">
+                Automated rule-based operational diagnostics, account/algorithm mismatch inspection, auth error tracing, and recurring pattern detection.
+            </div>
+        </div>
+        <div class="analyzer-actions">
+            {% if has_analyzed %}
+            <a href="{% url 'admin:algo_log_analyzer_export' %}?hours={{ selected_hours }}&max_logs={{ max_logs }}" class="btn-action btn-export">
+                <span>📥 Export Multi-Sheet Excel (.xlsx)</span>
+            </a>
+            <a href="?hours={{ selected_hours }}&max_logs={{ max_logs }}&run=1" class="btn-action btn-rerun">
+                <span>🔄 Re-run Analysis</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'admin:algo_monitoring' %}" class="btn-action btn-filter">
+                <span>⚡ Algo Hub</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- ON-DEMAND EXECUTION PANEL (Shown when analysis has not yet been executed) -->
+    {% if not has_analyzed %}
+    <div class="launch-panel">
+        <div class="launch-icon">🔍</div>
+        <div class="launch-title">On-Demand Log Anomaly Diagnostics</div>
+        <div class="launch-desc">
+            To ensure zero dashboard latency, log inspection is triggered explicitly on demand. Select your inspection timeframe and parameters below, then click <strong>Execute Log Analysis</strong> to scan local logs across all 8 detection rules.
+        </div>
+
+        <form method="get" class="launch-form" onsubmit="onExecuteAnalysis(this);">
+            <input type="hidden" name="run" value="1">
+
+            <div class="launch-params-row">
+                <div class="param-group">
+                    <label class="param-label">Inspection Timeframe</label>
+                    <select name="hours" class="param-select">
+                        <option value="1" {% if selected_hours == '1' %}selected{% endif %}>Past 1 Hour</option>
+                        <option value="6" {% if selected_hours == '6' %}selected{% endif %}>Past 6 Hours</option>
+                        <option value="12" {% if selected_hours == '12' %}selected{% endif %}>Past 12 Hours</option>
+                        <option value="24" {% if selected_hours == '24' or not selected_hours %}selected{% endif %}>Past 24 Hours</option>
+                        <option value="48" {% if selected_hours == '48' %}selected{% endif %}>Past 48 Hours</option>
+                        <option value="168" {% if selected_hours == '168' %}selected{% endif %}>Past 7 Days</option>
+                    </select>
+                </div>
+
+                <div class="param-group">
+                    <label class="param-label">Max Logs to Ingest</label>
+                    <select name="max_logs" class="param-select">
+                        <option value="10000" {% if max_logs == '10000' %}selected{% endif %}>10,000 Records</option>
+                        <option value="25000" {% if max_logs == '25000' %}selected{% endif %}>25,000 Records</option>
+                        <option value="50000" {% if max_logs == '50000' or not max_logs %}selected{% endif %}>50,000 Records</option>
+                        <option value="100000" {% if max_logs == '100000' %}selected{% endif %}>100,000 Records</option>
+                        <option value="all" {% if max_logs == 'all' %}selected{% endif %}>All Records (No Limit)</option>
+                    </select>
+                </div>
+
+                <div class="param-group">
+                    <label class="param-label">Account Scope</label>
+                    <select name="account_id" class="param-select">
+                        <option value="">All Accounts ({{ all_accounts|length }})</option>
+                        {% for acc in all_accounts %}
+                        <option value="{{ acc }}" {% if filter_account == acc %}selected{% endif %}>{{ acc }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="launch-btn">
+                <span>▶ Execute Log Analysis</span>
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- RESULTS SECTION (Shown when has_analyzed is True) -->
+    {% if has_analyzed %}
+
+    <!-- KPI Summary Grid -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-title">Logs Inspected</div>
+            <div class="kpi-value">{{ summary.total_logs|default:0|intcomma }} <span style="font-size: 12px; font-weight: 500; color: var(--body-quiet-color);">{% if max_logs == 'all' %}All Records / Past {{ selected_hours }}h{% else %}Past {{ selected_hours }}h{% endif %}</span></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Anomalies Detected</div>
+            <div class="kpi-value" style="color: {% if summary.total_anomalies > 0 %}#dc2626{% else %}#16a34a{% endif %} !important;">
+                {{ summary.total_anomalies|default:0|intcomma }}
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Critical / High Severity</div>
+            <div class="kpi-value" style="color: {% if summary.critical_count > 0 or summary.high_count > 0 %}#dc2626{% else %}#16a34a{% endif %} !important;">
+                {{ summary.critical_count|default:0 }} <span style="font-size: 13px; font-weight: 600; color: #c2410c;">/ {{ summary.high_count|default:0 }} High</span>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Recurring Error Loops</div>
+            <div class="kpi-value" style="color: {% if recurring_patterns|length > 0 %}#d97706{% else %}#16a34a{% endif %} !important;">
+                {{ recurring_patterns|length }} <span style="font-size: 12px; font-weight: 500; color: var(--body-quiet-color);">Patterns</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeframe & Filter Toolbar -->
+    <div class="filter-bar">
+        <div class="time-selector">
+            <span style="font-size: 12px; font-weight: 700; color: var(--body-quiet-color); margin-right: 4px;">Timeframe:</span>
+            <a href="?run=1&hours=1&max_logs={{ max_logs }}{% if filter_account %}&account_id={{ filter_account }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}" class="btn-action btn-filter {% if selected_hours == '1' %}active{% endif %}">1h</a>
+            <a href="?run=1&hours=6&max_logs={{ max_logs }}{% if filter_account %}&account_id={{ filter_account }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}" class="btn-action btn-filter {% if selected_hours == '6' %}active{% endif %}">6h</a>
+            <a href="?run=1&hours=24&max_logs={{ max_logs }}{% if filter_account %}&account_id={{ filter_account }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}" class="btn-action btn-filter {% if selected_hours == '24' or not selected_hours %}active{% endif %}">24h</a>
+            <a href="?run=1&hours=48&max_logs={{ max_logs }}{% if filter_account %}&account_id={{ filter_account }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}" class="btn-action btn-filter {% if selected_hours == '48' %}active{% endif %}">48h</a>
+            <a href="?run=1&hours=168&max_logs={{ max_logs }}{% if filter_account %}&account_id={{ filter_account }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}" class="btn-action btn-filter {% if selected_hours == '168' %}active{% endif %}">7d</a>
+        </div>
+
+        <form method="get" class="filter-dropdowns">
+            <input type="hidden" name="run" value="1">
+            <input type="hidden" name="hours" value="{{ selected_hours }}">
+            
+            <select name="max_logs" class="filter-select" onchange="this.form.submit()" title="Max records to inspect">
+                <option value="10000" {% if max_logs == '10000' %}selected{% endif %}>10,000 Records</option>
+                <option value="25000" {% if max_logs == '25000' %}selected{% endif %}>25,000 Records</option>
+                <option value="50000" {% if max_logs == '50000' or not max_logs %}selected{% endif %}>50,000 Records</option>
+                <option value="100000" {% if max_logs == '100000' %}selected{% endif %}>100,000 Records</option>
+                <option value="all" {% if max_logs == 'all' %}selected{% endif %}>All Records (No Limit)</option>
+            </select>
+
+            <select name="account_id" class="filter-select" onchange="this.form.submit()">
+                <option value="">All Accounts ({{ all_accounts|length }})</option>
+                {% for acc in all_accounts %}
+                <option value="{{ acc }}" {% if filter_account == acc %}selected{% endif %}>{{ acc }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="severity" class="filter-select" onchange="this.form.submit()">
+                <option value="">All Severities</option>
+                <option value="CRITICAL" {% if filter_severity == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
+                <option value="HIGH" {% if filter_severity == 'HIGH' %}selected{% endif %}>HIGH</option>
+                <option value="MEDIUM" {% if filter_severity == 'MEDIUM' %}selected{% endif %}>MEDIUM</option>
+                <option value="LOW" {% if filter_severity == 'LOW' %}selected{% endif %}>LOW</option>
+            </select>
+
+            {% if filter_account or filter_severity or filter_category %}
+            <a href="?run=1&hours={{ selected_hours }}&max_logs={{ max_logs }}" class="btn-action btn-filter" style="padding: 4px 8px; font-size: 11px;">Clear Filters</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Recurring Error Patterns (if any) -->
+    {% if recurring_patterns %}
+    <div class="section-title">
+        <span>🔄 High-Frequency Recurring Error Loops ({{ recurring_patterns|length }})</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="table-modern">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Category</th>
+                    <th>Occurrences</th>
+                    <th>Rate (/min)</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
+                    <th>Sample Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in recurring_patterns %}
+                <tr>
+                    <td><span class="badge-sev badge-sev-{{ p.severity }}">{{ p.severity }}</span></td>
+                    <td><span class="badge-cat">{{ p.category }}</span></td>
+                    <td style="font-weight: 800; color: #dc2626;">{{ p.occurrences }}x</td>
+                    <td style="font-weight: 600;">{{ p.frequency_per_min|floatformat:1 }}/m</td>
+                    <td style="white-space: nowrap; font-size: 11px; color: var(--body-quiet-color);">{{ p.first_seen|slice:":19" }}</td>
+                    <td style="white-space: nowrap; font-size: 11px; color: var(--body-quiet-color);">{{ p.last_seen|slice:":19" }}</td>
+                    <td><span class="code-snippet">{{ p.sample_message|truncatechars:120 }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Anomaly Audit Log Table -->
+    <div class="section-title">
+        <span>📋 Operational Anomaly Audit Log ({% if recent_anomalies %}{{ recent_anomalies|length }}{% else %}0{% endif %})</span>
+    </div>
+
+    {% if recent_anomalies %}
+    <div class="table-wrapper">
+        <table class="table-modern">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Severity</th>
+                    <th>Category</th>
+                    <th>Account</th>
+                    <th>Algo</th>
+                    <th>Reason / Diagnosis</th>
+                    <th>Raw Message Preview</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in recent_anomalies %}
+                <tr>
+                    <td style="white-space: nowrap; font-size: 11px; color: var(--body-quiet-color);">
+                        {{ a.timestamp|slice:":19" }}
+                    </td>
+                    <td>
+                        <span class="badge-sev badge-sev-{{ a.severity }}">{{ a.severity }}</span>
+                    </td>
+                    <td>
+                        <span class="badge-cat">{{ a.category }}</span>
+                    </td>
+                    <td style="font-weight: 600;">
+                        {{ a.account_id }}
+                        {% if a.broker_code %}<span style="font-size: 10px; color: var(--body-quiet-color);">({{ a.broker_code }})</span>{% endif %}
+                    </td>
+                    <td style="font-size: 11px; font-family: monospace;">
+                        {{ a.algo_name }}
+                    </td>
+                    <td style="color: #0f172a; font-weight: 500; max-width: 300px;">
+                        {{ a.reason }}
+                    </td>
+                    <td>
+                        <span class="code-snippet">{{ a.message|truncatechars:160 }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-banner">
+        <div style="font-size: 28px; margin-bottom: 8px;">🎉</div>
+        <div style="font-size: 15px; font-weight: 700; color: #16a34a; margin-bottom: 4px;">Zero Operational Anomalies Detected</div>
+        <div style="font-size: 12px;">All {{ summary.total_logs|default:0|intcomma }} inspected log records comply with account bindings, auth requirements, and system protocols.</div>
+    </div>
+    {% endif %}
+
+    {% endif %}
+
+    <!-- Active Detection Rules Drawer (Always available) -->
+    <div class="rules-card">
+        <div class="rules-header" onclick="document.getElementById('rulesGrid').style.display = document.getElementById('rulesGrid').style.display === 'none' ? 'grid' : 'none'">
+            <span>🛡️ Active Detection Rules ({{ rules|length }} Registered)</span>
+            <span style="font-size: 11px; color: #0284c7;">Toggle Rule Specs &darr;</span>
+        </div>
+        <div class="rules-grid" id="rulesGrid" style="display: none;">
+            {% for r in rules %}
+            <div class="rule-item">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="rule-id">{{ r.rule_id }}</span>
+                    <span class="badge-sev badge-sev-{{ r.severity }}">{{ r.severity }}</span>
+                </div>
+                <div class="rule-name">{{ r.name }}</div>
+                <div class="rule-desc">{{ r.description }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

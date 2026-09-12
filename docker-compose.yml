@@ -1,0 +1,58 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    container_name: algo_trading_monolith
+    restart: unless-stopped
+    ports:
+      - "80:80" # Nginx HTTP
+      - "443:443"
+      - "127.0.0.1:5432:5432" # PostgreSQL for local host scripts / algo testing
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./logs:/app/logs
+      - .:/app
+      - /app/.venv
+      - /app/staticfiles
+      - certbot_webroot:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+      - /run/deltazero-deploy.fifo:/run/deltazero-deploy.fifo
+      - /var/log/deltazero-deploy.log:/var/log/deltazero-deploy.log
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost/health/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        certbot certonly --webroot -w /var/www/certbot \
+        --email ${LETSENCRYPT_EMAIL:-praveenselvi045@gmail.com} \
+        --agree-tos \
+        --no-eff-email \
+        -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} &&  
+        echo "✅ Certbot init complete" || echo "❌ Certbot failed"
+    volumes:
+      - certbot_webroot:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    depends_on:
+      - app
+
+volumes:
+  certbot_webroot:
+  certbot_certs:

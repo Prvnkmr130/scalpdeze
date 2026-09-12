@@ -1,0 +1,577 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}🚀 Cloud Deployment & Git Operations Hub | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  :root {
+    --dh-bg: var(--body-bg, #0b0f19);
+    --dh-card: var(--darkened-bg, #111827);
+    --dh-border: #374151;
+    --dh-text: #f3f4f6;
+    --dh-muted: #9ca3af;
+    --dh-primary: #3b82f6;
+    --dh-primary-hover: #2563eb;
+    --dh-success: #10b981;
+    --dh-warning: #f59e0b;
+    --dh-danger: #ef4444;
+  }
+  .dh-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--dh-text);
+  }
+  .dh-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .dh-title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #fff;
+  }
+  .dh-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--dh-primary);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .dh-card {
+    background: var(--dh-card);
+    border: 1px solid var(--dh-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    margin-bottom: 1.5rem;
+  }
+  .git-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .git-stat {
+    background: rgba(31, 41, 55, 0.6);
+    border: 1px solid var(--dh-border);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .git-stat-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--dh-muted);
+    letter-spacing: 0.05em;
+  }
+  .git-stat-val {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    word-break: break-all;
+  }
+  .git-stat-val code {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #60a5fa;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.4rem;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--dh-primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  }
+  .btn-primary:hover {
+    background: var(--dh-primary-hover);
+    transform: translateY(-1px);
+  }
+  .btn-success {
+    background: var(--dh-success);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  }
+  .btn-success:hover {
+    background: #059669;
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: #1f2937;
+    color: var(--dh-text);
+    border-color: var(--dh-border);
+  }
+  .btn-secondary:hover {
+    background: #374151;
+  }
+  .terminal-box {
+    background: #050811;
+    border: 1px solid #1f293b;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #e2e8f0;
+    min-height: 280px;
+    max-height: 480px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .status-idle {
+    background: rgba(156, 163, 175, 0.15);
+    color: #9ca3af;
+    border: 1px solid rgba(156, 163, 175, 0.3);
+  }
+  .status-running {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    animation: pulse 1.5s infinite;
+  }
+  .status-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .status-failed {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  select.dh-select {
+    display: inline-block;
+    height: 42px;
+    line-height: 40px;
+    box-sizing: border-box;
+    background-color: #1f2937;
+    color: #f3f4f6;
+    border: 1px solid var(--dh-border);
+    padding: 0 2.2rem 0 1rem;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    min-width: 180px;
+    vertical-align: middle;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  select.dh-select:focus {
+    border-color: var(--dh-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+  select.dh-select option {
+    background-color: #1f2937;
+    color: #f3f4f6;
+    padding: 8px 12px;
+  }
+
+  /* Mobile Responsive Optimizations */
+  @media (max-width: 768px) {
+    .dh-container {
+      margin: 10px auto !important;
+      padding: 0 8px !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .dh-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+      margin-bottom: 1rem !important;
+    }
+    .dh-card {
+      padding: 1rem !important;
+      margin-bottom: 1rem !important;
+    }
+    .git-grid {
+      grid-template-columns: 1fr !important;
+      gap: 0.75rem !important;
+    }
+    .dh-meta {
+      flex-direction: column !important;
+      gap: 8px !important;
+    }
+    .dh-controls {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 12px !important;
+    }
+    select.dh-select {
+      width: 100% !important;
+      min-width: unset !important;
+    }
+    .btn {
+      width: 100% !important;
+      justify-content: center !important;
+      min-height: 42px !important;
+    }
+    .dh-terminal {
+      font-size: 11px !important;
+      padding: 10px !important;
+      max-height: 350px !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:algo_monitoring' %}">{% translate '⚡ Algo Monitoring' %}</a>
+&rsaquo; {% translate '🚀 Deployment Hub' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<form id="csrf-form" style="display:none;">{% csrf_token %}</form>
+<div class="dh-container">
+  <!-- Header -->
+  <div class="dh-header">
+    <h1 class="dh-title">
+      <span>🚀 Cloud Deployment & Git Operations Hub</span>
+      <span class="dh-badge">Linux Host Runner</span>
+    </h1>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <a href="{% url 'admin:data_hub' %}" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">📦 Data Hub</a>
+      <a href="{% url 'admin:algo_status' %}" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">⚡ Algo Status</a>
+      <a href="{% url 'admin:positions_pnl' %}" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">📊 Positions & P&L</a>
+    </div>
+  </div>
+
+  <!-- Live Git Metadata Card -->
+  <div class="dh-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <h2 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>🌿 Live Git Repository Information</span>
+        <span id="git-dirty-badge" {% if git_info.is_dirty %}style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.3);" {% else %}style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);" {% endif %}>
+          {% if git_info.is_dirty %}⚠️ {{ git_info.dirty_count }} Uncommitted File(s){% else %}✓ Working Tree Clean{% endif %}
+        </span>
+      </h2>
+      <button class="btn btn-secondary" onclick="refreshGitInfo()" id="btn-refresh-git" style="padding: 0.35rem 0.8rem; font-size: 0.82rem;">
+        <span>🔄</span> Refresh Git Info
+      </button>
+    </div>
+
+    <div class="git-grid">
+      <div class="git-stat">
+        <span class="git-stat-label">Active Branch</span>
+        <span class="git-stat-val" id="git-branch"><code>{{ git_info.branch }}</code></span>
+      </div>
+      <div class="git-stat">
+        <span class="git-stat-label">Latest Commit SHA</span>
+        <span class="git-stat-val" id="git-hash">
+          <code>{{ git_info.short_hash }}</code>
+          <span style="font-size: 0.75rem; color: var(--dh-muted); margin-left: 4px;" title="{{ git_info.commit_hash }}">({{ git_info.relative_time }})</span>
+        </span>
+      </div>
+      <div class="git-stat">
+        <span class="git-stat-label">Commit Author</span>
+        <span class="git-stat-val" id="git-author">{{ git_info.author }}</span>
+      </div>
+      <div class="git-stat">
+        <span class="git-stat-label">Remote Synchronization Status</span>
+        <span class="git-stat-val" id="git-remote" style="color: #60a5fa; font-size: 0.88rem;">{{ git_info.remote_status }}</span>
+      </div>
+    </div>
+
+    <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(0,0,0,0.25); border-radius: 6px; border-left: 3px solid var(--dh-primary);">
+      <span style="font-size: 0.75rem; font-weight: 700; color: var(--dh-muted); text-transform: uppercase;">Latest Commit Subject:</span>
+      <div id="git-message" style="color: #f3f4f6; font-weight: 500; font-size: 0.92rem; margin-top: 2px;">{{ git_info.message }}</div>
+    </div>
+  </div>
+
+  <!-- Deployment Action Card -->
+  <div class="dh-card">
+    <h2 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin: 0 0 0.5rem 0;">
+      🚀 Out-of-Container Deployment Trigger
+    </h2>
+    <p style="color: var(--dh-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+      Dispatches an out-of-container signal to the Linux host systemd runner. Executes <code>git pull</code>, <code>docker compose build & restart</code>, database migrations, and health verification without terminating the deployment session.
+    </p>
+
+    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label for="select-branch" style="font-size: 0.85rem; font-weight: 700; color: var(--dh-muted); text-transform: uppercase;">Target Branch:</label>
+        <select id="select-branch" class="dh-select">
+          {% for b in git_info.available_branches %}
+          <option value="{{ b }}" {% if b == git_info.branch %}selected{% endif %}>{{ b }}</option>
+          {% empty %}
+          <option value="main">main</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label for="select-mode" style="font-size: 0.85rem; font-weight: 700; color: var(--dh-muted); text-transform: uppercase;">Build Mode:</label>
+        <select id="select-mode" class="dh-select">
+          <option value="false" selected>⚡ Fast Restart (No Rebuild - ~2s)</option>
+          <option value="true">🔨 Full Docker Rebuild (--build - ~30s)</option>
+        </select>
+      </div>
+
+      <button class="btn btn-success" id="btn-deploy" onclick="confirmAndDeploy()">
+        <span>🚀</span> Start Production Deployment
+      </button>
+    </div>
+
+    <!-- Status Chip Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dh-muted);">STATUS:</span>
+        <span class="status-chip {% if is_deploy_active %}status-running{% else %}status-idle{% endif %}" id="deploy-status-chip">
+          {% if is_deploy_active %}RUNNING{% else %}IDLE{% endif %}
+        </span>
+        <span id="deploy-job-label" style="font-size: 0.8rem; color: var(--dh-muted); font-family: monospace;"></span>
+      </div>
+      <div>
+        <button class="btn btn-secondary" onclick="clearTerminal()" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;">Clear Terminal</button>
+      </div>
+    </div>
+
+    <!-- Terminal Console Output -->
+    <div class="terminal-box" id="terminal-output">Ready to deploy. Choose Build Mode above and click "Start Production Deployment".</div>
+  </div>
+</div>
+
+<script>
+  let logOffset = 0;
+  let activeJobId = "";
+  let pollInterval = null;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    {% if is_deploy_active %}
+    startPollingLogs();
+    {% endif %}
+  });
+
+  async function refreshGitInfo() {
+    const btn = document.getElementById("btn-refresh-git");
+    const origHtml = btn ? btn.innerHTML : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span>🔄</span> Refreshing...`;
+    }
+    try {
+      const res = await fetch("{% url 'deploy_git_info' %}");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.git) {
+          const g = data.git;
+          document.getElementById("git-branch").innerHTML = `<code>${g.branch}</code>`;
+          document.getElementById("git-hash").innerHTML = `<code>${g.short_hash}</code> <span style="font-size: 0.75rem; color: var(--dh-muted); margin-left: 4px;">(${g.relative_time})</span>`;
+          document.getElementById("git-author").innerText = g.author;
+          document.getElementById("git-remote").innerText = g.remote_status;
+          document.getElementById("git-message").innerText = g.message;
+
+          const badge = document.getElementById("git-dirty-badge");
+          if (badge) {
+            if (g.is_dirty) {
+              badge.style.background = "rgba(245, 158, 11, 0.15)";
+              badge.style.color = "#f59e0b";
+              badge.style.border = "1px solid rgba(245, 158, 11, 0.3)";
+              badge.innerText = `⚠️ ${g.dirty_count} Uncommitted File(s)`;
+            } else {
+              badge.style.background = "rgba(16, 185, 129, 0.15)";
+              badge.style.color = "#10b981";
+              badge.style.border = "1px solid rgba(16, 185, 129, 0.3)";
+              badge.innerText = "✓ Working Tree Clean";
+            }
+          }
+
+          if (btn) {
+            btn.innerHTML = `<span>✅</span> Refreshed!`;
+            setTimeout(() => { if (btn) btn.innerHTML = origHtml; }, 2000);
+          }
+          return;
+        }
+      }
+      if (btn) {
+        btn.innerHTML = `<span>⚠️</span> Failed`;
+        setTimeout(() => { if (btn) btn.innerHTML = origHtml; }, 2000);
+      }
+    } catch (e) {
+      console.warn("Failed to refresh git info", e);
+      if (btn) {
+        btn.innerHTML = `<span>⚠️</span> Error`;
+        setTimeout(() => { if (btn) btn.innerHTML = origHtml; }, 2000);
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function confirmAndDeploy() {
+    const branch = document.getElementById("select-branch").value;
+    const isBuild = document.getElementById("select-mode").value === "true";
+    const modeLabel = isBuild ? "FULL DOCKER REBUILD (~30s)" : "FAST RESTART (~2s)";
+    const confirmed = confirm(`Are you sure you want to deploy branch '${branch}' using ${modeLabel}?`);
+    if (!confirmed) return;
+
+    triggerDeployment(branch, isBuild);
+  }
+
+  function getCsrfToken() {
+    const el = document.querySelector("[name=csrfmiddlewaretoken]");
+    if (el && el.value) return el.value;
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : "";
+  }
+
+  async function triggerDeployment(branch, isBuild) {
+    const btn = document.getElementById("btn-deploy");
+    btn.disabled = true;
+
+    const modeText = isBuild ? "Full Docker Rebuild" : "Fast Restart";
+    const term = document.getElementById("terminal-output");
+    term.innerText = `[${new Date().toLocaleTimeString()}] 🚀 Dispatching deployment trigger for branch '${branch}' [${modeText}]...\n`;
+    updateStatusChip("RUNNING");
+    logOffset = 0;
+    activeJobId = "";
+    if (pollInterval) clearInterval(pollInterval);
+
+    try {
+      const csrfToken = getCsrfToken();
+      const res = await fetch("{% url 'deploy_trigger' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken
+        },
+        body: JSON.stringify({ branch: branch, build: isBuild })
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+      let data;
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server returned HTTP ${res.status}: ${text.substring(0, 150)}`);
+      }
+
+      if (data.success) {
+        activeJobId = data.job_id || "";
+        document.getElementById("deploy-job-label").innerText = `[Job: ${activeJobId}]`;
+        term.innerText += `✓ ${data.message}\nConnecting to live host terminal output stream...\n\n`;
+        logOffset = 0;
+        startPollingLogs();
+      } else {
+        term.innerText += `❌ Deployment Error: ${data.error || "Request failed"}\n`;
+        updateStatusChip(data.status === "BUSY" ? "RUNNING" : "FAILED");
+        btn.disabled = false;
+      }
+    } catch (err) {
+      term.innerText += `❌ Network Error: ${err.message}\n`;
+      updateStatusChip("FAILED");
+      btn.disabled = false;
+    }
+  }
+
+  function startPollingLogs() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(fetchLogChunk, 1500);
+    fetchLogChunk();
+  }
+
+  async function fetchLogChunk() {
+    try {
+      const res = await fetch(`{% url 'deploy_status' %}?job_id=${encodeURIComponent(activeJobId)}&offset=${logOffset}`);
+      if (!res.ok) return;
+
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) return;
+
+      const data = await res.json();
+      if (data.success) {
+        const term = document.getElementById("terminal-output");
+        if (data.log_chunk) {
+          term.innerText += data.log_chunk;
+          term.scrollTop = term.scrollHeight;
+          logOffset = data.offset;
+        }
+
+        if (data.active) {
+          updateStatusChip("RUNNING");
+        } else {
+          updateStatusChip(data.state || "SUCCESS");
+          clearInterval(pollInterval);
+          pollInterval = null;
+          document.getElementById("btn-deploy").disabled = false;
+          refreshGitInfo();
+        }
+      }
+    } catch (e) {
+      console.warn("Log polling error", e);
+    }
+  }
+
+  function updateStatusChip(state) {
+    const chip = document.getElementById("deploy-status-chip");
+    chip.className = `status-chip status-${state.toLowerCase()}`;
+    chip.innerText = state;
+  }
+
+  function clearTerminal() {
+    document.getElementById("terminal-output").innerText = "";
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+/* Multi-Broker Admin Dynamic Hints - Clean Minimalist Styling */
+
+.broker-active-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #0284c7;
+    color: #ffffff;
+    border: 1px solid #0369a1;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: none;
+    margin-left: 12px;
+    vertical-align: middle;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.broker-field-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    margin-bottom: 4px;
+    font-size: 12.5px;
+    color: var(--body-fg, #334155);
+    background: var(--darkened-bg, #f8fafc);
+    border: 1px solid var(--hairline-color, #e2e8f0);
+    border-left: 3px solid #0284c7;
+    padding: 6px 10px;
+    border-radius: 5px;
+    max-width: 680px;
+    line-height: 1.4;
+}
+
+.broker-field-hint strong {
+    color: var(--body-fg, #0f172a);
+    font-weight: 700;
+}
+
+.broker-field-hint code {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.broker-guide-link-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--darkened-bg, #f8fafc);
+    border: 1px solid var(--hairline-color, #e2e8f0);
+    border-left: 4px solid #0284c7;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--body-fg, #334155);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.broker-guide-link-bar a {
+    color: #0284c7;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.broker-guide-link-bar a:hover {
+    color: #0369a1;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .broker-field-hint {
+        background: #1e293b;
+        border-color: #334155;
+        border-left-color: #38bdf8;
+        color: #e2e8f0;
+    }
+    .broker-field-hint strong {
+        color: #f8fafc;
+    }
+    .broker-field-hint code {
+        background: rgba(255, 255, 255, 0.1);
+        color: #38bdf8;
+    }
+    .broker-guide-link-bar {
+        background: #1e293b;
+        border-color: #334155;
+        border-left-color: #38bdf8;
+        color: #e2e8f0;
+    }
+    .broker-guide-link-bar a {
+        color: #38bdf8;
+    }
+}

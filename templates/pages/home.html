@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deltazero</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0f4c81, #1d976c);
+            color: #fff;
+        }
+
+        /* Login */
+        .top-nav {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+        }
+
+        .login-button {
+            padding: 10px 22px;
+            border: none;
+            border-radius: 25px;
+            background: #fff;
+            color: #0f4c81;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .login-button:hover {
+            background: #f3f3f3;
+        }
+
+        /* Card */
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            padding: 50px 30px;
+            background: rgba(255, 255, 255, .12);
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, .15);
+        }
+
+        .container h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .container p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            color: #e8e8e8;
+        }
+
+        .powered-by {
+            display: inline-block;
+            background: #ffffff22;
+            padding: 10px 22px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        /* Footer */
+
+        footer {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #eeeeee;
+        }
+
+        @media(max-width:600px) {
+
+            .container {
+                padding: 35px 20px;
+            }
+
+            .container h1 {
+                font-size: 2rem;
+            }
+
+            .top-nav {
+                right: 15px;
+                top: 15px;
+            }
+
+            .login-button {
+                padding: 8px 18px;
+            }
+
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="top-nav">
+        <a href="{% url 'admin:login' %}">
+            <button class="login-button">Login</button>
+        </a>
+    </div>
+
+    <div class="container">
+        <h1>Welcome to Deltazero</h1>
+
+        <p>Your path to Freedom</p>
+
+        <div class="powered-by">
+            Powered by <strong>U Praveen Kumar</strong>
+        </div>
+    </div>
+
+    <footer>
+        &copy; <span id="year"></span> Deltazero. All Rights Reserved.
+    </footer>
+
+    <script>
+        document.getElementById("year").textContent =
+            new Date().getFullYear();
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,62 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Database
+postgres_data/
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Static files (generated)
+staticfiles/
+
+# uv
+.uv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+
+# Environment & Secrets
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.pub
+id_*
+
+# Logs & Caches
+.ruff_cache/
+.pytest_cache/
+
+# Generated files
+response.html
+openapi.json
+
+# Strategy Config & Excel Data
+*.xlsx
+*.xls
+*cum_table.xlsx
+*Master_inst_token.xlsx
+cum_table.xlsx
+Master_inst_token.xlsx
+
+# Whitelist strategy token reference configurations
+!algo_trading/algos/token_ref.xlsx
+!algo_trading/algos/token_ref_bitcoin.xlsx

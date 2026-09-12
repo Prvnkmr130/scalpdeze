@@ -1,0 +1,681 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'kalai/css/admin_mobile.css' %}">
+{% endblock %}
+
+{% block welcome-msg %}{% endblock %}
+
+{% block branding %}
+<div id="branding">
+    <div class="branding-header-row">
+        <h1 id="site-name">
+            <span>{{ user.username|title|default:'Guest' }}</span>
+        </h1>
+    </div>
+
+    {% if user.is_authenticated %}
+    <div class="branding-buttons">
+        <div class="branding-nav-group">
+            <a href="{% url 'default_totp_view' %}?next={{ request.get_full_path|urlencode }}" class="btn-nav btn-totp" target="_blank">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>View TOTP</span>
+            </a>
+            <a href="{% url 'custom_admin:broker_login' %}?next={{ request.get_full_path|urlencode }}" class="btn-nav btn-broker-login" target="_self">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span>Login</span>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if has_coinswitch_alerts %}
+<div class="coinswitch-expiry-banner-container">
+    {% for alert in coinswitch_alerts %}
+    <div class="cs-alert-banner {% if alert.is_expired %}cs-alert-expired{% else %}cs-alert-expiring{% endif %}">
+        <div class="cs-alert-content">
+            <span class="cs-alert-icon">{% if alert.is_expired %}🚨{% else %}⚠️{% endif %}</span>
+            <div class="cs-alert-text">
+                <strong>CoinSwitch PRO ({{ alert.account_id }})</strong>: 
+                {% if alert.is_expired %}
+                    Secret Key <strong>EXPIRED on {{ alert.expires_at }}</strong>. Trading & feeds halted until renewed.
+                {% else %}
+                    Secret Key expires in <strong class="cs-days-highlight">{{ alert.days_left }} day{{ alert.days_left|pluralize }}</strong> (on {{ alert.expires_at }}).
+                {% endif %}
+            </div>
+        </div>
+        <a href="{{ alert.edit_url }}" class="cs-alert-btn">Renew Key &rarr;</a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Pop-up Dialog -->
+<div id="coinswitchExpiryModal" class="cs-modal-overlay" style="display:none;">
+    <div class="cs-modal-card">
+        <div class="cs-modal-header {% if coinswitch_expired_count > 0 %}cs-modal-hdr-expired{% else %}cs-modal-hdr-expiring{% endif %}">
+            <div class="cs-modal-title">
+                <span class="cs-modal-badge">{% if coinswitch_expired_count > 0 %}🚨 CRITICAL ACTION REQUIRED{% else %}⚠️ CREDENTIAL EXPIRY ALERT{% endif %}</span>
+                <h2>CoinSwitch Secret Key Expiry</h2>
+            </div>
+            <button type="button" class="cs-modal-close" onclick="dismissCoinswitchModal();">&times;</button>
+        </div>
+        <div class="cs-modal-body">
+            <p class="cs-modal-intro">The following CoinSwitch PRO account{{ coinswitch_alerts|length|pluralize }} require{{ coinswitch_alerts|length|pluralize:"s," }} secret key renewal:</p>
+            <div class="cs-modal-account-list">
+                {% for alert in coinswitch_alerts %}
+                <div class="cs-modal-item {% if alert.is_expired %}item-expired{% else %}item-expiring{% endif %}">
+                    <div class="cs-modal-item-info">
+                        <div class="cs-acc-title"><strong>{{ alert.account_id }}</strong> ({{ alert.name }})</div>
+                        <div class="cs-acc-meta">
+                            <span>Added: <strong>{{ alert.added_at }}</strong></span> &bull; 
+                            <span>Expires: <strong>{{ alert.expires_at }}</strong> ({{ alert.validity_days }}-day policy)</span>
+                        </div>
+                    </div>
+                    <div class="cs-modal-item-action">
+                        {% if alert.is_expired %}
+                            <span class="cs-badge-expired">Expired</span>
+                        {% else %}
+                            <span class="cs-badge-expiring">{{ alert.days_left }}d left</span>
+                        {% endif %}
+                        <a href="{{ alert.edit_url }}" class="cs-btn-update">Update Key</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="cs-modal-note">
+                💡 <em>CoinSwitch PRO API secret keys are valid for 90 days. Please generate a new secret key on the CoinSwitch PRO Developer Portal and update your account before the expiry deadline.</em>
+            </div>
+        </div>
+        <div class="cs-modal-footer">
+            <button type="button" class="cs-btn-dismiss" onclick="dismissCoinswitchModal();">Remind Me Later</button>
+            {% if coinswitch_alerts %}
+            <a href="{{ coinswitch_alerts.0.edit_url }}" class="cs-btn-primary">Update First Account &rarr;</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extrahead %}
+<style>
+    /* Breadcrumbs - Horizontal linked path with '/' separator (No serial numbers) */
+    .breadcrumbs,
+    nav[aria-label="Breadcrumbs"] ol,
+    nav[aria-label="Breadcrumbs"] ul,
+    ol.breadcrumbs,
+    div.breadcrumbs {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        list-style: none !important;
+        list-style-type: none !important;
+        margin: 8px 0 12px 0 !important;
+        padding: 8px 12px !important;
+        background: #0f172a !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 6px !important;
+        font-size: 13px !important;
+        color: #94a3b8 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        line-height: normal !important;
+    }
+
+    .breadcrumbs li,
+    .breadcrumbs__item,
+    nav[aria-label="Breadcrumbs"] li,
+    ol.breadcrumbs li {
+        display: inline-flex !important;
+        align-items: center !important;
+        list-style: none !important;
+        list-style-type: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: #94a3b8 !important;
+    }
+
+    /* Custom '/' separator between breadcrumb sections */
+    .breadcrumbs li:not(:last-child)::after,
+    .breadcrumbs__item:not(:last-child)::after,
+    nav[aria-label="Breadcrumbs"] li:not(:last-child)::after,
+    ol.breadcrumbs li:not(:last-child)::after {
+        content: "/" !important;
+        display: inline-block !important;
+        margin: 0 8px !important;
+        color: #64748b !important;
+        font-weight: 400 !important;
+    }
+
+    .breadcrumbs a,
+    .breadcrumbs__item a,
+    nav[aria-label="Breadcrumbs"] a,
+    div.breadcrumbs a {
+        color: #38bdf8 !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+        padding: 2px 4px !important;
+        border-radius: 4px !important;
+        transition: all 0.15s ease !important;
+    }
+
+    .breadcrumbs a:hover,
+    .breadcrumbs__item a:hover,
+    nav[aria-label="Breadcrumbs"] a:hover,
+    div.breadcrumbs a:hover {
+        color: #ffffff !important;
+        background: rgba(56, 189, 248, 0.15) !important;
+        text-decoration: underline !important;
+    }
+
+    .breadcrumbs li:last-child,
+    .breadcrumbs__item:last-child {
+        color: #f1f5f9 !important;
+        font-weight: 600 !important;
+    }
+
+    #header {
+        padding: 8px 14px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px !important;
+        background: #1e293b !important;
+        border-bottom: 1px solid #334155;
+        box-sizing: border-box;
+        width: 100% !important;
+    }
+
+    #branding {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .branding-header-row {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex-shrink: 0 !important;
+    }
+
+    #site-name {
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        color: #fddc03 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    #site-name a {
+        color: #fddc03 !important;
+        text-decoration: none !important;
+    }
+
+    .branding-buttons {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+        margin: 0 !important;
+    }
+
+    .branding-nav-group {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    .btn-nav {
+        background-color: #0284c7;
+        color: #ffffff !important;
+        padding: 0 10px !important;
+        text-decoration: none !important;
+        border-radius: 5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        height: 28px !important;
+        box-sizing: border-box;
+        white-space: nowrap;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        cursor: pointer;
+    }
+
+    .btn-nav:hover {
+        background-color: #0369a1;
+    }
+
+    .btn-totp {
+        background-color: #4f46e5;
+    }
+
+    .btn-totp:hover {
+        background-color: #4338ca;
+    }
+
+    #user-tools {
+        font-size: 12px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #cbd5e1 !important;
+        flex-shrink: 0 !important;
+    }
+
+    #user-tools a {
+        color: #93c5fd !important;
+        text-decoration: none !important;
+        padding: 3px 6px;
+        border-radius: 4px;
+    }
+
+    @media (max-width: 767px) {
+        #header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+            height: auto !important;
+            min-height: auto !important;
+            padding: 10px 14px !important;
+            gap: 8px !important;
+        }
+
+        #branding {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            gap: 8px !important;
+            flex: none !important;
+        }
+
+        .branding-buttons {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            flex-wrap: nowrap !important;
+        }
+
+        #user-tools {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+            gap: 8px !important;
+            padding: 6px 0 2px 0 !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+            font-size: 11px !important;
+            color: #cbd5e1 !important;
+            margin: 0 !important;
+            clear: both !important;
+            float: none !important;
+            line-height: normal !important;
+        }
+
+        #user-tools a {
+            color: #93c5fd !important;
+            padding: 4px 6px !important;
+            font-size: 11px !important;
+            text-decoration: none !important;
+            display: inline-block !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block footer %}
+<footer>
+    <p>&copy; <span id="year"></span> Deltazero &bull; Powered by Praveen</p>
+</footer>
+
+<style>
+    footer {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 0.85em;
+        color: #64748b;
+        padding: 14px;
+        background-color: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+    }
+    footer p { margin: 0; }
+</style>
+
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    function showDjangoMessage(type, text) {
+        let list = document.querySelector('.messagelist');
+        if (!list) {
+            list = document.createElement('ul');
+            list.className = 'messagelist';
+            const content = document.getElementById('content');
+            if (content) content.parentNode.insertBefore(list, content);
+            else document.body.prepend(list);
+        }
+        const li = document.createElement('li');
+        li.className = type;
+        li.textContent = text;
+        list.appendChild(li);
+    }
+
+    // CoinSwitch Expiry Modal Handler (5-Hour Session Dismissal)
+    document.addEventListener("DOMContentLoaded", function() {
+        const modal = document.getElementById("coinswitchExpiryModal");
+        if (modal) {
+            const isDismissed = sessionStorage.getItem("cs_expiry_modal_dismissed");
+            if (!isDismissed) {
+                setTimeout(function() {
+                    modal.style.display = "flex";
+                }, 300);
+            }
+        }
+    });
+
+    function dismissCoinswitchModal() {
+        const modal = document.getElementById("coinswitchExpiryModal");
+        if (modal) {
+            modal.style.display = "none";
+            sessionStorage.setItem("cs_expiry_modal_dismissed", "true");
+        }
+    }
+</script>
+
+<style>
+    /* ─── CoinSwitch Expiry Warning Banner ─── */
+    .coinswitch-expiry-banner-container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: 6px 0 10px 0;
+        box-sizing: border-box;
+    }
+    .cs-alert-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        animation: fadeInBanner 0.3s ease-out;
+    }
+    .cs-alert-expiring {
+        background: linear-gradient(90deg, #78350f 0%, #451a03 100%);
+        border: 1px solid #f59e0b;
+        color: #fef3c7;
+    }
+    .cs-alert-expired {
+        background: linear-gradient(90deg, #7f1d1d 0%, #450a0a 100%);
+        border: 1px solid #ef4444;
+        color: #fee2e2;
+    }
+    .cs-alert-content {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .cs-alert-icon {
+        font-size: 16px;
+        line-height: 1;
+    }
+    .cs-alert-text {
+        line-height: 1.4;
+    }
+    .cs-days-highlight {
+        color: #fbbf24;
+        font-weight: 700;
+        text-decoration: underline;
+    }
+    .cs-alert-btn {
+        display: inline-flex;
+        align-items: center;
+        background: #f59e0b;
+        color: #0f172a !important;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 4px;
+        text-decoration: none !important;
+        font-size: 12px;
+        white-space: nowrap;
+        transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .cs-alert-expired .cs-alert-btn {
+        background: #ef4444;
+        color: #ffffff !important;
+    }
+    .cs-alert-btn:hover {
+        opacity: 0.92;
+        transform: translateY(-1px);
+    }
+
+    /* ─── CoinSwitch Expiry Modal Popup Dialog ─── */
+    .cs-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeInOverlay 0.25s ease-out;
+    }
+    .cs-modal-card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        width: 92%;
+        max-width: 580px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        overflow: hidden;
+        animation: slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .cs-modal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #334155;
+    }
+    .cs-modal-hdr-expiring {
+        background: linear-gradient(135deg, #2d1a03 0%, #1e293b 100%);
+        border-bottom-color: #f59e0b;
+    }
+    .cs-modal-hdr-expired {
+        background: linear-gradient(135deg, #380d0d 0%, #1e293b 100%);
+        border-bottom-color: #ef4444;
+    }
+    .cs-modal-badge {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: #f59e0b;
+        display: block;
+        margin-bottom: 4px;
+    }
+    .cs-modal-hdr-expired .cs-modal-badge {
+        color: #ef4444;
+    }
+    .cs-modal-title h2 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+    .cs-modal-close {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 4px;
+        transition: color 0.15s;
+    }
+    .cs-modal-close:hover {
+        color: #ffffff;
+    }
+    .cs-modal-body {
+        padding: 18px 20px;
+        color: #cbd5e1;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .cs-modal-intro {
+        margin-top: 0;
+        margin-bottom: 12px;
+        color: #e2e8f0;
+    }
+    .cs-modal-account-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .cs-modal-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        gap: 12px;
+    }
+    .cs-modal-item.item-expiring {
+        border-left: 4px solid #f59e0b;
+    }
+    .cs-modal-item.item-expired {
+        border-left: 4px solid #ef4444;
+    }
+    .cs-acc-title {
+        font-size: 14px;
+        color: #f8fafc;
+    }
+    .cs-acc-meta {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+    }
+    .cs-modal-item-action {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    .cs-badge-expiring {
+        background: #78350f;
+        color: #fef3c7;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        border: 1px solid #d97706;
+    }
+    .cs-badge-expired {
+        background: #7f1d1d;
+        color: #fee2e2;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        border: 1px solid #dc2626;
+    }
+    .cs-btn-update {
+        background: #38bdf8;
+        color: #0f172a !important;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 4px;
+        text-decoration: none !important;
+        transition: opacity 0.15s;
+    }
+    .cs-btn-update:hover {
+        opacity: 0.9;
+    }
+    .cs-modal-note {
+        font-size: 12px;
+        color: #94a3b8;
+        background: #0f172a;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px dashed #334155;
+    }
+    .cs-modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 12px 20px;
+        background: #0f172a;
+        border-top: 1px solid #334155;
+    }
+    .cs-btn-dismiss {
+        background: transparent;
+        border: 1px solid #475569;
+        color: #94a3b8;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .cs-btn-dismiss:hover {
+        background: #334155;
+        color: #f1f5f9;
+    }
+    .cs-btn-primary {
+        background: #f59e0b;
+        color: #0f172a !important;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 6px 14px;
+        border-radius: 6px;
+        text-decoration: none !important;
+        transition: opacity 0.15s;
+    }
+    .cs-btn-primary:hover {
+        opacity: 0.92;
+    }
+
+    @keyframes fadeInOverlay {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUpModal {
+        from { transform: translateY(20px) scale(0.96); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    @keyframes fadeInBanner {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}

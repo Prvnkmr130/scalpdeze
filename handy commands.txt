@@ -1,0 +1,142 @@
+# ==============================================================================
+# DELTAZERO26 - HANDY DAY-TO-DAY COMMAND CHEATSHEET
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. DATABASE & TABLE MAINTENANCE (HOST - UV)
+# ------------------------------------------------------------------------------
+
+# Clear Algorithm Logs (Truncates kalai_algolog and resets ID to 1)
+uv run python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'algo_trading.settings'); django.setup(); from django.db import connection, connections; connection.cursor().execute('TRUNCATE TABLE kalai_algolog RESTART IDENTITY;'); print('kalai_algolog cleared successfully.'); [c.pool.close() for c in connections.all() if hasattr(c, 'pool') and c.pool]; connections.close_all()"
+
+# Clear Processed Tick Store (Truncates kalai_processedtickstore)
+uv run python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'algo_trading.settings'); django.setup(); from django.db import connection, connections; connection.cursor().execute('TRUNCATE TABLE kalai_processedtickstore RESTART IDENTITY;'); print('kalai_processedtickstore cleared successfully.'); [c.pool.close() for c in connections.all() if hasattr(c, 'pool') and c.pool]; connections.close_all()"
+
+# Clear Algorithm State Tables (Truncates kalai_algoinfo)
+uv run python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'algo_trading.settings'); django.setup(); from django.db import connection, connections; connection.cursor().execute('TRUNCATE TABLE kalai_algoinfo RESTART IDENTITY;'); print('kalai_algoinfo cleared successfully.'); [c.pool.close() for c in connections.all() if hasattr(c, 'pool') and c.pool]; connections.close_all()"
+
+# Quick Check: List Active Brokers & Trading Status
+uv run python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'algo_trading.settings'); django.setup(); from kalai.models import Broker, connections; print('\n'.join([f'{b.account_id} ({b.broker_name.code if b.broker_name else \"N/A\"}): Trade={b.enable_trade}, WS={b.enable_websocket}' for b in Broker.objects.all()])); [c.pool.close() for c in connections.all() if hasattr(c, 'pool') and c.pool]; connections.close_all()"
+
+# Quick Check: Inspect Latest 10 AlgoLog Entries
+uv run python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'algo_trading.settings'); django.setup(); from kalai.models import AlgoLog, connections; [print(f'[{l.id}] {l.algo_name} ({l.account.account_id if l.account else \"SYS\"}) [{l.tag}] {l.message[:80]}') for l in AlgoLog.objects.order_by('-id')[:10]]; [c.pool.close() for c in connections.all() if hasattr(c, 'pool') and c.pool]; connections.close_all()"
+
+# Run Django Database Migrations
+uv run python manage.py migrate
+
+# Create Django Superuser
+uv run python manage.py createsuperuser
+
+# Open Interactive Django Shell
+uv run python manage.py shell
+
+
+# ------------------------------------------------------------------------------
+# 1B. DATA HUB & CLOUD SYNCHRONIZATION (REMOTE TO LOCAL)
+# ------------------------------------------------------------------------------
+
+# Clone operational data from remote cloud server (auto-clears local tables, allows self-signed/IP SSL)
+uv run python manage.py clone_remote_data --host=172.235.29.89 --insecure --hours=24
+
+# Clone specific datasets only (e.g., masters, state, pnl)
+uv run python manage.py clone_remote_data --host=172.235.29.89 --insecure --include=masters,state,pnl
+
+# Run cloud synchronization inside Docker container
+docker compose exec algo_trading_monolith python manage.py clone_remote_data --host=172.235.29.89 --insecure --hours=24
+
+
+
+# ------------------------------------------------------------------------------
+# 2. DOCKER MANAGEMENT & SUPERVISION
+# ------------------------------------------------------------------------------
+
+# Build and Start Containers in Background
+docker compose up --build -d
+
+# View Live Aggregated Logs
+docker compose logs -f --tail=100
+
+# View Live Logs for Monolith Application Container Only
+docker compose logs -f algo_trading_monolith
+
+# Restart the Monolith Container
+docker compose restart algo_trading_monolith
+
+# Stop and Remove All Containers
+docker compose down
+
+# Enter Interactive Bash Shell Inside Monolith Container
+docker compose exec algo_trading_monolith bash
+
+# Check Supervisor Process Status Inside Container (Web, WS Engine, Algo Engine)
+docker compose exec algo_trading_monolith supervisorctl status
+
+# Restart All Supervisor Sub-Services Inside Container
+docker compose exec algo_trading_monolith supervisorctl restart all
+
+# Restart Only the Algo Engine Inside Container
+docker compose exec algo_trading_monolith supervisorctl restart algo_engine
+
+# Restart Only the WebSocket Streaming Engine Inside Container
+docker compose exec algo_trading_monolith supervisorctl restart websocket_engine
+
+# Tail Supervisor Worker Engine Logs
+docker compose exec algo_trading_monolith tail -f /app/logs/algo_engine.log
+
+
+# ------------------------------------------------------------------------------
+# 3. DOCKER CLEANUP & DISK SPACE RECLAMATION
+# ------------------------------------------------------------------------------
+
+# Remove All Unused Images
+docker image prune -a -f
+
+# Remove Dangling Intermediate Images (<none>:<none>)
+docker image prune -f
+
+# Clear BuildKit Build Cache
+docker builder prune -f
+
+# Complete Docker System Deep Clean (Unused Images + Stopped Containers + Build Cache)
+docker system prune -a -f
+
+
+# ------------------------------------------------------------------------------
+# 4. PYTHON, UV & CODE QUALITY
+# ------------------------------------------------------------------------------
+
+# Sync Virtual Environment Dependencies
+uv sync
+
+# Add a New Package Dependency to Project
+uv add <package_name>
+
+# Run Code Formatting & Lint Checks via Ruff
+uv run ruff check .
+uv run ruff format .
+
+# Verify Algorithm Registry Loading
+uv run python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'algo_trading.settings'); django.setup(); from algo_trading.algos import load_all_algos; print('Active algos:', [fn.__name__ for fn in load_all_algos()])"
+
+# Execute Indian Options Master Engine in Debug Mode (Kotak or Zerodha)
+uv run python -m algo_trading.algos.indian_opt_trde_polars --account W1NPY --debug --iterations 5
+
+# Execute Crypto Options Master Engine in Debug Mode (Delta or CoinSwitch)
+uv run python -m algo_trading.algos.crypto_opt_trde_polars --account 73270496 --debug --iterations 5
+
+
+# ------------------------------------------------------------------------------
+# 5. DEBUG LOG ANALYZER & ANOMALY DETECTION (DEBUG MODE ONLY)
+# ------------------------------------------------------------------------------
+
+# Run Log Analyzer for past 24 hours and export to Excel (default 50,000 logs limit)
+uv run python manage.py analyze_logs --hours=24 --output=log_anomalies.xlsx
+
+# Run Log Analyzer for ALL records across timeframe (no record limit)
+uv run python manage.py analyze_logs --hours=24 --max-logs=0 --output=all_logs_anomalies.xlsx
+
+# Run Log Analyzer for past 6 hours, filtering specific rules
+uv run python manage.py analyze_logs --hours=6 --rules=RULE_01_ASSET_CLASS_MISMATCH,RULE_04_AUTH_API_ERRORS --output=auth_anomalies.xlsx
+
+# Run Log Analyzer inside Docker container (all records)
+docker exec algo_trading_monolith python manage.py analyze_logs --hours=24 --max-logs=0 --output=/app/logs/log_anomalies.xlsx

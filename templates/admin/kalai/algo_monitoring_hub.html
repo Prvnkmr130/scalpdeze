@@ -1,0 +1,291 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static humanize %}
+
+{% block title %}Algo Monitoring & Operations Hub | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  .hub-container {
+    max-width: 1200px;
+    margin: 20px auto 40px auto;
+    padding: 24px 28px;
+    background: var(--body-bg, #ffffff) !important;
+    border: 1px solid var(--hairline-color, #e2e8f0) !important;
+    border-radius: 12px;
+    color: var(--body-fg, #334155) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  }
+  .hub-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--hairline-color, #e2e8f0) !important;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .hub-header h1 {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    color: var(--body-fg, #0f172a) !important;
+    margin: 0 0 4px 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hub-header-subtitle {
+    font-size: 13px;
+    color: var(--body-quiet-color, #64748b) !important;
+  }
+  .hub-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .hub-kpi-card {
+    padding: 16px 20px;
+    border-radius: 10px;
+    background: var(--darkened-bg, #f8fafc) !important;
+    border: 1px solid var(--hairline-color, #e2e8f0) !important;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hub-kpi-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    color: var(--body-quiet-color, #64748b) !important;
+  }
+  .hub-kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--body-fg, #0f172a) !important;
+  }
+  .hub-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .hub-card {
+    border: 1px solid var(--hairline-color, #e2e8f0) !important;
+    border-radius: 12px;
+    padding: 24px;
+    background: var(--darkened-bg, #ffffff) !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+  .hub-card:hover {
+    transform: translateY(-3px);
+    border-color: #0284c7 !important;
+    box-shadow: 0 8px 24px rgba(2, 132, 199, 0.12);
+  }
+  .hub-card-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+  .hub-card-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--body-fg, #0f172a) !important;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .hub-card-desc {
+    font-size: 13px;
+    color: var(--body-quiet-color, #64748b) !important;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+  .hub-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--hairline-color, #f1f5f9);
+    padding-top: 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0284c7;
+  }
+  .hub-badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .hub-badge-green {
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
+  }
+  .hub-badge-blue {
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284c7;
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; {% translate '⚡ Algo Monitoring Hub' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="hub-container">
+  <div class="hub-header">
+    <div>
+      <h1><span>⚡ Algo Monitoring & Operations Hub</span></h1>
+      <div class="hub-header-subtitle">Central management portal for live algorithm execution, broker P&L analytics, and streaming data export.</div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <a href="{% url 'admin:kalai_broker_changelist' %}" class="btn-header" style="padding: 6px 12px; font-size: 12px; font-weight: 600; text-decoration: none; border-radius: 6px; border: 1px solid var(--hairline-color); color: inherit;">⚙️ Accounts</a>
+      <a href="{% url 'admin:kalai_algolog_changelist' %}" class="btn-header" style="padding: 6px 12px; font-size: 12px; font-weight: 600; text-decoration: none; border-radius: 6px; border: 1px solid var(--hairline-color); color: inherit;">📜 Logs</a>
+    </div>
+  </div>
+
+  <!-- KPI Overview -->
+  <div class="hub-kpi-grid">
+    <div class="hub-kpi-card">
+      <div class="hub-kpi-title">Active Algorithms</div>
+      <div class="hub-kpi-value" style="color: #16a34a !important;">{{ algo_summary.running|default:0 }} <span style="font-size: 13px; font-weight: 500; color: var(--body-quiet-color);">/ {{ algo_summary.total|default:0 }}</span></div>
+    </div>
+    <div class="hub-kpi-card">
+      <div class="hub-kpi-title">Realised P&L (Today)</div>
+      <div class="hub-kpi-value" style="color: {% if pnl_analytics.total_realised_pnl >= 0 %}#16a34a{% else %}#dc2626{% endif %} !important;">
+        {% if pnl_analytics.total_realised_pnl > 0 %}+{% endif %}₹{{ pnl_analytics.total_realised_pnl|floatformat:2|intcomma|default:"0.00" }}
+      </div>
+    </div>
+    <div class="hub-kpi-card">
+      <div class="hub-kpi-title">Open Positions</div>
+      <div class="hub-kpi-value">{{ pnl_analytics.open_positions_count|default:0 }}</div>
+    </div>
+    <div class="hub-kpi-card">
+      <div class="hub-kpi-title">Master Universes</div>
+      <div class="hub-kpi-value">{{ masters_count|default:0 }} <span style="font-size: 13px; font-weight: 500; color: var(--body-quiet-color);">Tables</span></div>
+    </div>
+  </div>
+
+  <!-- 3 Dedicated Tool Modules -->
+  <div class="hub-cards-grid">
+    <!-- Card 1: Algo Status -->
+    <a href="{% url 'admin:algo_status' %}" class="hub-card">
+      <div>
+        <div class="hub-card-icon">⚡</div>
+        <div class="hub-card-title">
+          <span>Algorithm Status Monitor</span>
+          <span class="hub-badge hub-badge-green">Live Heartbeat</span>
+        </div>
+        <div class="hub-card-desc">
+          Inspect real-time strategy execution loops, active broker account bindings, enable_trade toggles, and recent operational telemetry events.
+        </div>
+      </div>
+      <div class="hub-card-footer">
+        <span>Open Status Monitor</span>
+        <span>&rarr;</span>
+      </div>
+    </a>
+
+    <!-- Card 2: Positions & PnL -->
+    <a href="{% url 'admin:positions_pnl' %}" class="hub-card">
+      <div>
+        <div class="hub-card-icon">📊</div>
+        <div class="hub-card-title">
+          <span>Positions & P&L Analytics</span>
+          <span class="hub-badge hub-badge-blue">Intraday & Historical</span>
+        </div>
+        <div class="hub-card-desc">
+          Multi-broker portfolio inspection, real-time mark-to-market valuations, 1-minute throttled zero-API sync, and historical P&L reporting.
+        </div>
+      </div>
+      <div class="hub-card-footer">
+        <span>Open Positions & Analytics</span>
+        <span>&rarr;</span>
+      </div>
+    </a>
+
+    <!-- Card 3: Data Hub & Sync -->
+    <a href="{% url 'admin:data_hub' %}" class="hub-card">
+      <div>
+        <div class="hub-card-icon">📦</div>
+        <div class="hub-card-title">
+          <span>Data Hub & Cloud Sync</span>
+          <span class="hub-badge hub-badge-blue">Streaming & Export</span>
+        </div>
+        <div class="hub-card-desc">
+          Unified zero-lock streaming export for logs, ticks, state, masters, and trades in Excel/CSV/JSON, plus throttled cloud-to-local cloner.
+        </div>
+      </div>
+      <div class="hub-card-footer">
+        <span>Open Data Hub</span>
+        <span>&rarr;</span>
+      </div>
+    </a>
+
+    <!-- Card 4: Candle Visualizer -->
+    <a href="{% url 'admin:candle_visualizer' %}" target="_blank" class="hub-card">
+      <div>
+        <div class="hub-card-icon">📈</div>
+        <div class="hub-card-title">
+          <span>Candle Chart Visualizer</span>
+          <span class="hub-badge" style="background: #fef3c7; color: #d97706;">Debug Workstation ↗</span>
+        </div>
+        <div class="hub-card-desc">
+          Interactive TradingView candlestick inspection with instant token resolution, dynamic OHLC crosshairs, and multi-timeframe candle cache debugging.
+        </div>
+      </div>
+      <div class="hub-card-footer">
+        <span>Launch Visualizer (New Tab)</span>
+        <span>&rarr;</span>
+      </div>
+    </a>
+
+    <!-- Card 5: Deployment Hub -->
+    <a href="{% url 'admin:deployment_hub' %}" class="hub-card">
+      <div>
+        <div class="hub-card-icon">🚀</div>
+        <div class="hub-card-title">
+          <span>Cloud Deployment & Git Hub</span>
+          <span class="hub-badge hub-badge-green">Linux Host Runner</span>
+        </div>
+        <div class="hub-card-desc">
+          Live Git commit telemetry, zero-downtime out-of-container deployments, real-time ANSI terminal streaming, and branch management.
+        </div>
+      </div>
+      <div class="hub-card-footer">
+        <span>Open Deployment Hub</span>
+        <span>&rarr;</span>
+      </div>
+    </a>
+
+    <!-- Card 6: Log Anomaly Analyzer -->
+    <a href="{% url 'admin:algo_log_analyzer' %}" class="hub-card">
+      <div>
+        <div class="hub-card-icon">🔍</div>
+        <div class="hub-card-title">
+          <span>Log Anomaly Analyzer</span>
+          <span class="hub-badge" style="background: #e0e7ff; color: #4338ca;">Debug Workstation</span>
+        </div>
+        <div class="hub-card-desc">
+          Automated rule-based operational diagnostics, account/algorithm mismatch detection, auth error tracing, and multi-sheet Excel forensic export.
+        </div>
+      </div>
+      <div class="hub-card-footer">
+        <span>Open Log Analyzer</span>
+        <span>&rarr;</span>
+      </div>
+    </a>
+  </div>
+</div>
+{% endblock %}

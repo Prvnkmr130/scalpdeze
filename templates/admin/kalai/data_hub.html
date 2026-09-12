@@ -1,0 +1,665 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Data Hub & Cloud Synchronizer | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  :root {
+    --dh-bg: var(--body-bg, #0f172a);
+    --dh-card: var(--darkened-bg, #1e293b);
+    --dh-border: rgba(255, 255, 255, 0.08);
+    --dh-text: var(--body-fg, #f8fafc);
+    --dh-muted: #94a3b8;
+    --dh-primary: #3b82f6;
+    --dh-primary-hover: #2563eb;
+    --dh-success: #10b981;
+    --dh-warning: #f59e0b;
+    --dh-danger: #ef4444;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --dh-bg: #f8fafc;
+      --dh-card: #ffffff;
+      --dh-border: #e2e8f0;
+      --dh-text: #0f172a;
+      --dh-muted: #64748b;
+    }
+  }
+  .dh-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem 1rem;
+    font-family: inherit;
+    color: var(--dh-text);
+  }
+  .dh-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .dh-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .dh-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--dh-primary);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  .dh-tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--dh-card);
+    padding: 0.35rem;
+    border-radius: 12px;
+    border: 1px solid var(--dh-border);
+    margin-bottom: 1.5rem;
+    width: fit-content;
+  }
+  .dh-tab-btn {
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--dh-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .dh-tab-btn.active {
+    background: var(--dh-primary);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+  .dh-card {
+    background: var(--dh-card);
+    border: 1px solid var(--dh-border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+  }
+  .dh-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .dh-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .dh-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dh-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .dh-input, .dh-select {
+    display: block;
+    width: 100%;
+    height: 44px;
+    line-height: 1.5;
+    padding: 0.5rem 1rem;
+    box-sizing: border-box;
+    border-radius: 8px;
+    border: 1px solid var(--dh-border);
+    background-color: var(--dh-card);
+    color: var(--dh-text);
+    font-size: 0.92rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    outline: none;
+    vertical-align: middle;
+  }
+  .dh-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 1.1rem;
+    cursor: pointer;
+  }
+  .dh-select option {
+    background-color: var(--dh-card);
+    color: var(--dh-text);
+    padding: 8px 12px;
+  }
+  .dh-input:focus, .dh-select:focus {
+    border-color: var(--dh-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+  .dh-table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .dh-table-card {
+    border: 1px solid var(--dh-border);
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(0, 0, 0, 0.02);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .dh-table-card:hover {
+    border-color: var(--dh-primary);
+    transform: translateY(-2px);
+  }
+  .dh-table-card.selected {
+    border-color: var(--dh-primary);
+    background: rgba(59, 130, 246, 0.08);
+    box-shadow: 0 0 0 1px var(--dh-primary);
+  }
+  .dh-table-card input[type="radio"] {
+    margin-top: 0.2rem;
+    cursor: pointer;
+  }
+  .dh-table-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .dh-table-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .dh-table-sub {
+    font-size: 0.75rem;
+    color: var(--dh-muted);
+    font-family: monospace;
+  }
+  .dh-btn {
+    padding: 0.85rem 1.75rem;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+  }
+  .dh-btn-primary {
+    background: var(--dh-primary);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+  }
+  .dh-btn-primary:hover {
+    background: var(--dh-primary-hover);
+    transform: translateY(-1px);
+  }
+  .dh-btn-success {
+    background: var(--dh-success);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  }
+  .dh-btn-success:hover {
+    background: #059669;
+  }
+  .dh-status-box {
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--dh-border);
+    display: none;
+    font-family: monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .dh-format-pills {
+    display: flex;
+    gap: 0.75rem;
+  }
+  .dh-format-pill {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--dh-border);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .dh-format-pill.selected {
+    border-color: var(--dh-primary);
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--dh-primary);
+  }
+  .dh-checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem 0;
+  }
+  .dh-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--dh-border);
+    background: rgba(0, 0, 0, 0.02);
+    cursor: pointer;
+  }
+  .dh-checkbox-item input {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:algo_monitoring' %}">{% translate '⚡ Algo Monitoring' %}</a>
+&rsaquo; {% translate 'Data Hub & Cloud Synchronizer' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dh-container">
+  <div class="dh-header">
+    <h1 class="dh-title">
+      <span>📦 Data Hub & Cloud Synchronizer</span>
+      <span class="dh-badge">DeltaZero26 Core</span>
+    </h1>
+    <div style="display: flex; gap: 0.5rem;">
+      <a href="{% url 'admin:algo_status' %}" class="dh-btn" style="background: rgba(255,255,255,0.05); color: var(--dh-muted); font-size: 0.85rem; padding: 0.5rem 1rem;">⚡ Algo Status</a>
+      <a href="{% url 'admin:positions_pnl' %}" class="dh-btn" style="background: rgba(255,255,255,0.05); color: var(--dh-muted); font-size: 0.85rem; padding: 0.5rem 1rem;">📊 Positions & P&L</a>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="dh-tabs">
+    <button class="dh-tab-btn active" onclick="switchTab('export')">
+      <span>📥</span> Export & Download
+    </button>
+    <button class="dh-tab-btn" onclick="switchTab('clone')">
+      <span>🚀</span> Cloud-to-Local Cloner
+    </button>
+  </div>
+
+  <!-- ── Tab 1: Export Data ────────────────────────────────────────── -->
+  <div id="tab-export" class="dh-card">
+    <h2 style="font-size: 1.2rem; font-weight: 600; margin-top: 0; margin-bottom: 1.25rem;">Select Dataset to Export</h2>
+    
+    <div class="dh-table-grid">
+      <label class="dh-table-card selected" onclick="selectTable(this, 'algolog')">
+        <input type="radio" name="export_table" value="algolog" checked>
+        <div class="dh-table-info">
+          <span class="dh-table-name">📜 Algorithm Logs</span>
+          <span class="dh-table-sub">kalai_algolog</span>
+        </div>
+      </label>
+
+      <label class="dh-table-card" onclick="selectTable(this, 'ticks')">
+        <input type="radio" name="export_table" value="ticks">
+        <div class="dh-table-info">
+          <span class="dh-table-name">⏱️ Processed Ticks</span>
+          <span class="dh-table-sub">kalai_processedtickstore</span>
+        </div>
+      </label>
+
+      <label class="dh-table-card" onclick="selectTable(this, 'exchangemaster')">
+        <input type="radio" name="export_table" value="exchangemaster">
+        <div class="dh-table-info">
+          <span class="dh-table-name">🏛️ Exchange Masters</span>
+          <span class="dh-table-sub">kalai_exchangemaster (cum_table)</span>
+        </div>
+      </label>
+
+      <label class="dh-table-card" onclick="selectTable(this, 'algoinfo')">
+        <input type="radio" name="export_table" value="algoinfo">
+        <div class="dh-table-info">
+          <span class="dh-table-name">⚙️ Strategy State</span>
+          <span class="dh-table-sub">kalai_algoinfo (runtime state)</span>
+        </div>
+      </label>
+
+      <label class="dh-table-card" onclick="selectTable(this, 'positions')">
+        <input type="radio" name="export_table" value="positions">
+        <div class="dh-table-info">
+          <span class="dh-table-name">💼 Live Positions</span>
+          <span class="dh-table-sub">kalai_broker_position</span>
+        </div>
+      </label>
+
+      <label class="dh-table-card" onclick="selectTable(this, 'daily_pnl')">
+        <input type="radio" name="export_table" value="daily_pnl">
+        <div class="dh-table-info">
+          <span class="dh-table-name">📈 Daily P&L Snapshots</span>
+          <span class="dh-table-sub">kalai_daily_pnl_snapshot</span>
+        </div>
+      </label>
+
+      <label class="dh-table-card" onclick="selectTable(this, 'trades')">
+        <input type="radio" name="export_table" value="trades">
+        <div class="dh-table-info">
+          <span class="dh-table-name">🧾 Trade Records</span>
+          <span class="dh-table-sub">kalai_traderecord</span>
+        </div>
+      </label>
+    </div>
+
+    <div class="dh-grid">
+      <div class="dh-form-group">
+        <label class="dh-label">Account Filter</label>
+        <select id="export_account" class="dh-select">
+          <option value="ALL">All Accounts (Global)</option>
+          {% for b in brokers %}
+          <option value="{{ b.account_id }}">{{ b.name }} ({{ b.account_id }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="dh-form-group">
+        <label class="dh-label">Time Horizon</label>
+        <select id="export_period" class="dh-select" onchange="toggleCustomDates(this.value)">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="last_7_days" selected>Last 7 Days</option>
+          <option value="last_30_days">Last 30 Days</option>
+          <option value="all_time">All Time</option>
+          <option value="custom">Custom Date Range...</option>
+        </select>
+      </div>
+
+      <div class="dh-form-group" id="group_start_date" style="display: none;">
+        <label class="dh-label">Start Date</label>
+        <input type="date" id="export_start_date" class="dh-input">
+      </div>
+
+      <div class="dh-form-group" id="group_end_date" style="display: none;">
+        <label class="dh-label">End Date</label>
+        <input type="date" id="export_end_date" class="dh-input">
+      </div>
+    </div>
+
+    <div class="dh-form-group" style="margin-bottom: 1.5rem;">
+      <label class="dh-label">Export Format</label>
+      <div class="dh-format-pills">
+        <label class="dh-format-pill selected" onclick="selectFormat(this, 'xlsx')">
+          <input type="radio" name="export_format" value="xlsx" checked style="display: none;">
+          <span>📊 Excel Workbook (.xlsx)</span>
+        </label>
+        <label class="dh-format-pill" onclick="selectFormat(this, 'csv')">
+          <input type="radio" name="export_format" value="csv" style="display: none;">
+          <span>📄 Streaming CSV (.csv)</span>
+        </label>
+        <label class="dh-format-pill" onclick="selectFormat(this, 'json')">
+          <input type="radio" name="export_format" value="json" style="display: none;">
+          <span>📦 Structured JSON (.json)</span>
+        </label>
+      </div>
+    </div>
+
+    <button type="button" class="dh-btn dh-btn-primary" onclick="triggerDownload()">
+      <span>📥</span> Export & Download Dataset
+    </button>
+  </div>
+
+  <!-- ── Tab 2: Cloud-to-Local Cloner ──────────────────────────────── -->
+  <div id="tab-clone" class="dh-card" style="display: none;">
+    <h2 style="font-size: 1.2rem; font-weight: 600; margin-top: 0; margin-bottom: 0.5rem;">Cloud-to-Local Synchronization Engine</h2>
+    <p style="color: var(--dh-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+      Pulls operational debugging data, logs, and masters from your remote production server into this local PostgreSQL environment using rate-limited chunking and zero-lock queries.
+      {% if remote_db_host %}
+      <span style="display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; background: rgba(59, 130, 246, 0.12); color: var(--dh-primary); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">
+        ☁️ Target Host: {{ remote_db_host }} (from .env)
+      </span>
+      {% endif %}
+    </p>
+
+    <div class="dh-grid">
+      <div class="dh-form-group">
+        <label class="dh-label">Time Window (Hours)</label>
+        <select id="clone_hours" class="dh-select">
+          <option value="1">Last 1 Hour</option>
+          <option value="6">Last 6 Hours</option>
+          <option value="24" selected>Last 24 Hours (1 Day)</option>
+          <option value="72">Last 3 Days</option>
+          <option value="168">Last 7 Days (Max)</option>
+        </select>
+      </div>
+
+      <div class="dh-form-group">
+        <label class="dh-label">Chunk Slice Duration (CPU Throttle Guard)</label>
+        <select id="clone_chunk_hours" class="dh-select">
+          <option value="2">2 Hours per slice (Gentle on CPU)</option>
+          <option value="4" selected>4 Hours per slice (Recommended)</option>
+          <option value="8">8 Hours per slice</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="dh-label">Datasets to Clone</label>
+    <div class="dh-checkbox-group">
+      <label class="dh-checkbox-item">
+        <input type="checkbox" id="chk_masters" checked>
+        <span>🏛️ Exchange Masters (cum_table)</span>
+      </label>
+      <label class="dh-checkbox-item">
+        <input type="checkbox" id="chk_state" checked>
+        <span>⚙️ Strategy State (AlgoInfo)</span>
+      </label>
+      <label class="dh-checkbox-item">
+        <input type="checkbox" id="chk_logs" checked>
+        <span>📜 Algorithm Logs</span>
+      </label>
+      <label class="dh-checkbox-item">
+        <input type="checkbox" id="chk_ticks" checked>
+        <span>⏱️ Processed Ticks (COPY stream)</span>
+      </label>
+      <label class="dh-checkbox-item">
+        <input type="checkbox" id="chk_pnl" checked>
+        <span>📈 Positions & P&L Snapshots</span>
+      </label>
+    </div>
+
+    {% csrf_token %}
+    <div style="margin-top: 1rem; margin-bottom: 0.5rem;">
+      <label class="dh-label">TLS / SSL Verification</label>
+      <label class="dh-checkbox-item" style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" id="chk_allow_self_signed" {% if not ssl_verify or is_ip_host %}checked{% endif %}>
+        <span>🛡️ <strong>Accept Self-Signed SSL / Insecure TLS</strong> (Required when connecting directly to IP <code>{{ remote_db_host }}</code> or before a public domain SSL certificate is configured)</span>
+      </label>
+    </div>
+
+    <div style="margin-top: 0.75rem; margin-bottom: 1.25rem; padding: 0.65rem 0.9rem; border-radius: 8px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); font-size: 0.82rem; color: var(--dh-muted);">
+      ℹ️ <strong style="color: var(--dh-text);">Fresh Sync Guard</strong>: Clicking <em>Start Cloud Synchronization</em> clears existing local table data for selected categories (<strong style="color: var(--dh-text);">Exchange Masters</strong>, <strong style="color: var(--dh-text);">Strategy State</strong>, <strong style="color: var(--dh-text);">Algorithm Logs</strong>, and <strong style="color: var(--dh-text);">Positions & P&L Snapshots</strong>) before ingesting fresh cloud records.
+    </div>
+
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <button type="button" id="btn_run_clone" class="dh-btn dh-btn-success" onclick="runCloudClone()">
+        <span>🚀</span> Start Cloud Synchronization
+      </button>
+      <span id="clone_spinner" style="display: none; color: var(--dh-muted); font-size: 0.9rem;">
+        ⏳ Purging local tables and ingesting data chunks... Please wait.
+      </span>
+    </div>
+
+    <div id="clone_status_box" class="dh-status-box"></div>
+  </div>
+</div>
+
+<script>
+  let selectedTable = 'algolog';
+  let selectedFormat = 'xlsx';
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.dh-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('tab-export').style.display = tabId === 'export' ? 'block' : 'none';
+    document.getElementById('tab-clone').style.display = tabId === 'clone' ? 'block' : 'none';
+    event.currentTarget.classList.add('active');
+  }
+
+  function selectTable(card, tableKey) {
+    document.querySelectorAll('.dh-table-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    card.querySelector('input').checked = true;
+    selectedTable = tableKey;
+  }
+
+  function selectFormat(pill, fmt) {
+    document.querySelectorAll('.dh-format-pill').forEach(p => p.classList.remove('selected'));
+    pill.classList.add('selected');
+    pill.querySelector('input').checked = true;
+    selectedFormat = fmt;
+  }
+
+  function toggleCustomDates(period) {
+    const isCustom = period === 'custom';
+    document.getElementById('group_start_date').style.display = isCustom ? 'flex' : 'none';
+    document.getElementById('group_end_date').style.display = isCustom ? 'flex' : 'none';
+  }
+
+  function triggerDownload() {
+    const account = document.getElementById('export_account').value;
+    const period = document.getElementById('export_period').value;
+    const startDate = document.getElementById('export_start_date').value;
+    const endDate = document.getElementById('export_end_date').value;
+
+    const params = new URLSearchParams({
+      table: selectedTable,
+      account_id: account,
+      period: period,
+      format: selectedFormat
+    });
+    if (period === 'custom') {
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+    }
+
+    const downloadUrl = `/api/data-hub/export/?${params.toString()}`;
+    window.location.href = downloadUrl;
+  }
+
+  function getCsrfToken() {
+    const input = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (input && input.value) return input.value;
+    const cookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+    return cookie ? cookie.split('=')[1] : '';
+  }
+
+  async function runCloudClone() {
+    const btn = document.getElementById('btn_run_clone');
+    const spinner = document.getElementById('clone_spinner');
+    const statusBox = document.getElementById('clone_status_box');
+    const hours = parseInt(document.getElementById('clone_hours').value, 10);
+    const chunkHours = parseInt(document.getElementById('clone_chunk_hours').value, 10);
+    const allowSelfSigned = document.getElementById('chk_allow_self_signed') ? document.getElementById('chk_allow_self_signed').checked : false;
+    const remoteKeyInput = document.getElementById('clone_remote_key');
+    const remoteKey = remoteKeyInput ? remoteKeyInput.value.trim() : '';
+
+    const datasets = [];
+    if (document.getElementById('chk_masters').checked) datasets.push('masters');
+    if (document.getElementById('chk_state').checked) datasets.push('state');
+    if (document.getElementById('chk_logs').checked) datasets.push('logs');
+    if (document.getElementById('chk_ticks').checked) datasets.push('ticks');
+    if (document.getElementById('chk_pnl').checked) datasets.push('pnl');
+
+    if (datasets.length === 0) {
+      alert('Please select at least one dataset to clone.');
+      return;
+    }
+
+    btn.disabled = true;
+    spinner.style.display = 'inline-block';
+    statusBox.style.display = 'block';
+    statusBox.innerHTML = `<div>[${new Date().toLocaleTimeString()}] Purging local tables & initializing cloud synchronization...</div>`;
+
+    try {
+      const payload = {
+        hours: hours,
+        chunk_hours: chunkHours,
+        datasets: datasets,
+        clear_tables: true,
+        pause: 0.5,
+        ssl_verify: !allowSelfSigned
+      };
+      if (remoteKey) {
+        payload.remote_key = remoteKey;
+      }
+
+      const res = await fetch('/api/data-hub/clone/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        let errorMsg = `Server returned HTTP ${res.status}`;
+        try {
+          const errData = await res.json();
+          errorMsg = errData.error || errData.message || errorMsg;
+        } catch (_) {
+          const text = await res.text();
+          if (text.includes('<title>')) {
+            const match = text.match(/<title>(.*?)<\/title>/i);
+            errorMsg = match ? `${errorMsg}: ${match[1]}` : errorMsg;
+          } else {
+            errorMsg = `${errorMsg}: ${text.slice(0, 150)}`;
+          }
+        }
+        statusBox.innerHTML += `<div style="color: #ef4444; font-weight: bold; margin-top: 0.5rem;">❌ Sync Failed (${res.status}): ${errorMsg}</div>`;
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        statusBox.innerHTML += `<div style="color: #10b981; font-weight: bold; margin-top: 0.5rem;">✓ ${data.message || 'Synchronization completed successfully.'}</div>`;
+        if (data.details) {
+          for (const [k, v] of Object.entries(data.details)) {
+            statusBox.innerHTML += `<div> • ${k}: ${v}</div>`;
+          }
+        }
+      } else {
+        statusBox.innerHTML += `<div style="color: #ef4444; font-weight: bold; margin-top: 0.5rem;">❌ Sync Error: ${data.error || 'Unknown error'}</div>`;
+      }
+    } catch (err) {
+      statusBox.innerHTML += `<div style="color: #ef4444; font-weight: bold; margin-top: 0.5rem;">❌ Network Request Failed: ${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+    }
+  }
+</script>
+{% endblock %}

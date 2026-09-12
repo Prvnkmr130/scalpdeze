@@ -1,0 +1,1205 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static admin_filters %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}" {% csp_nonce_attr %}>
+<style {% csp_nonce_attr %}>
+/* ═════════════════════════════════════════════════════════════════════════ */
+/* FULL-WIDTH FLUID DASHBOARD LAYOUT & RESPONSIVE GRID                      */
+/* ═════════════════════════════════════════════════════════════════════════ */
+body.dashboard #content {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin-right: 0 !important;
+  padding: 12px 20px !important;
+}
+
+body.dashboard #content.colMS,
+body.dashboard #content.colM {
+  margin-right: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block !important;
+}
+
+body.dashboard #content-main {
+  float: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+body.dashboard #content-related {
+  display: none !important;
+}
+
+/* Remove 'Site administration' header and wrapper */
+.dashboard .titles-and-tools,
+.dashboard #content > .titles-and-tools,
+.dashboard #content > h1:first-child,
+.dashboard h1.visually-hidden {
+  display: none !important;
+}
+
+/* Toolbar */
+.admin-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.admin-search-box {
+  display: flex;
+  align-items: center;
+  position: relative;
+  min-width: 280px;
+  flex: 1;
+  max-width: 460px;
+}
+.admin-search-box input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  border-radius: 6px;
+  border: 1px solid var(--hairline-color, #373e47);
+  background: var(--body-bg, #1a1d21);
+  color: var(--body-fg, #adbac7);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.admin-search-box svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--body-quiet-color, #768390);
+  pointer-events: none;
+}
+
+/* Dashboard Sections Grid (Multi-Column) */
+.dashboard-sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+  margin-bottom: 26px;
+}
+
+@media (min-width: 1300px) {
+  .dashboard-sections-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1800px) {
+  .dashboard-sections-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .dashboard-sections-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+}
+
+/* Collapsible Modules */
+.collapsible-module {
+  border-radius: 8px;
+  border: 1px solid var(--hairline-color, #2d333b);
+  background: var(--body-bg, #1a1d21);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--darkened-bg, #22272e);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--hairline-color, #2d333b);
+  transition: background 0.15s;
+}
+.collapsible-header:hover {
+  background: rgba(83, 155, 245, 0.08);
+}
+.collapsible-header:focus-visible {
+  outline: 2px solid #539bf5;
+  outline-offset: -2px;
+}
+
+.collapsible-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.collapsible-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--body-fg, #adbac7);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.collapsible-count {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(118, 131, 144, 0.2);
+  color: var(--body-fg, #adbac7);
+  font-weight: 600;
+}
+
+.collapsible-toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--body-quiet-color, #768390);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
+}
+.collapsible-header:hover .collapsible-toggle-icon {
+  color: #539bf5;
+}
+
+/* Collapsed State */
+.collapsible-module.is-collapsed .collapsible-toggle-icon {
+  transform: rotate(-90deg);
+}
+.collapsible-module.is-collapsed .collapsible-body {
+  display: none !important;
+}
+.collapsible-module.is-collapsed .collapsible-header {
+  border-bottom: none;
+}
+
+.collapsible-body table {
+  margin: 0;
+  border: none;
+  width: 100%;
+}
+.collapsible-body table caption {
+  display: none;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════ */
+/* SYSTEM TELEMETRY & EVENT HUB (AT BOTTOM)                                 */
+/* ═════════════════════════════════════════════════════════════════════════ */
+.sys-hub-card {
+  background: var(--body-bg, #1a1d21);
+  border: 1px solid var(--hairline-color, #2d333b);
+  border-radius: 10px;
+  margin-top: 10px;
+  margin-bottom: 28px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
+  font-family: inherit;
+  transition: all 0.25s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sys-hub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--darkened-bg, #22272e);
+  border-bottom: 1px solid var(--hairline-color, #2d333b);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sys-hub-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sys-hub-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--body-fg, #adbac7);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.sys-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.pulse-normal {
+  background: #2ea043;
+  box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.7);
+  animation: pulse-green 2s infinite;
+}
+.pulse-warning {
+  background: #f0883e;
+  box-shadow: 0 0 0 0 rgba(240, 136, 62, 0.7);
+  animation: pulse-orange 2s infinite;
+}
+.pulse-critical {
+  background: #f85149;
+  box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.7);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-green {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 160, 67, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 160, 67, 0); }
+}
+@keyframes pulse-orange {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(240, 136, 62, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(240, 136, 62, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(240, 136, 62, 0); }
+}
+@keyframes pulse-red {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(248, 81, 73, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
+}
+
+.sys-hub-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sys-hub-btn {
+  background: var(--button-bg, #316dca);
+  color: #fff;
+  border: 1px solid var(--button-border, #4184e4);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.sys-hub-btn:hover {
+  background: var(--button-hover-bg, #4184e4);
+  color: #fff;
+}
+.sys-hub-btn-outline {
+  background: transparent;
+  color: var(--body-fg, #adbac7);
+  border: 1px solid var(--hairline-color, #444c56);
+}
+.sys-hub-btn-outline:hover {
+  background: var(--darkened-bg, #2d333b);
+  color: #fff;
+}
+
+/* Tabs */
+.sys-tabs-nav {
+  display: flex;
+  background: var(--body-bg, #1a1d21);
+  border-bottom: 1px solid var(--hairline-color, #2d333b);
+  overflow-x: auto;
+  gap: 4px;
+  padding: 6px 12px 0 12px;
+}
+.sys-tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--body-quiet-color, #768390);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.sys-tab-btn:hover {
+  color: var(--body-fg, #adbac7);
+}
+.sys-tab-btn.active {
+  color: #539bf5;
+  border-bottom-color: #539bf5;
+}
+
+.sys-tab-badge {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.badge-danger {
+  background: rgba(248, 81, 73, 0.2);
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+}
+.badge-warning {
+  background: rgba(240, 136, 62, 0.2);
+  color: #f0883e;
+  border: 1px solid rgba(240, 136, 62, 0.4);
+}
+.badge-success {
+  background: rgba(46, 160, 67, 0.2);
+  color: #3fb950;
+  border: 1px solid rgba(46, 160, 67, 0.4);
+}
+.badge-info {
+  background: rgba(83, 155, 245, 0.2);
+  color: #539bf5;
+  border: 1px solid rgba(83, 155, 245, 0.4);
+}
+.badge-muted {
+  background: rgba(118, 131, 144, 0.2);
+  color: #768390;
+  border: 1px solid rgba(118, 131, 144, 0.4);
+}
+
+/* Tab Panels */
+.sys-tab-panel {
+  display: none;
+  padding: 16px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+.sys-tab-panel.active {
+  display: block;
+}
+
+/* Event List Items */
+.sys-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sys-event-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--darkened-bg, #22272e);
+  border: 1px solid var(--hairline-color, #2d333b);
+  border-radius: 8px;
+  transition: transform 0.15s, background 0.15s;
+  gap: 12px;
+}
+.sys-event-row:hover {
+  background: rgba(83, 155, 245, 0.05);
+  border-color: #539bf5;
+}
+
+.sys-event-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.sys-event-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sys-event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+.sys-event-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--body-fg, #adbac7);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sys-event-msg {
+  font-size: 12px;
+  color: var(--body-quiet-color, #768390);
+  word-break: break-word;
+}
+.sys-event-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.sys-event-time {
+  font-size: 11px;
+  color: var(--body-quiet-color, #768390);
+  white-space: nowrap;
+}
+
+.empty-state-card {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--body-quiet-color, #768390);
+  font-size: 13px;
+}
+</style>
+{% endblock %}
+
+{% block coltype %}colM{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="app-list">
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- 1. DASHBOARD ACTIONS TOOLBAR (Top)                                       -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <div class="admin-toolbar-row">
+    <div class="admin-search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="adminFilterInput" placeholder="Quick filter models or tools..." onkeyup="filterAdminDashboard(this.value);" autocomplete="off">
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button type="button" class="sys-hub-btn sys-hub-btn-outline" onclick="toggleAllSections(false);">
+        <span>Expand All</span>
+      </button>
+      <button type="button" class="sys-hub-btn sys-hub-btn-outline" onclick="toggleAllSections(true);">
+        <span>Collapse All</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- 2. DASHBOARD SECTIONS GRID (Clubbed Collapsible Modules)                 -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <div class="dashboard-sections-grid">
+
+    <!-- Card 1: ALGO MONITORING (Top Priority) -->
+    <div class="collapsible-module app-algo-monitoring" id="sec-algo-monitoring">
+      <div class="collapsible-header" onclick="toggleSection('sec-algo-monitoring');" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')toggleSection('sec-algo-monitoring');">
+        <div class="collapsible-title-group">
+          <h3 class="collapsible-title">
+            <span>⚡ Algo Monitoring</span>
+          </h3>
+          <span class="collapsible-count">6 tools</span>
+        </div>
+        <div class="collapsible-toggle-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <div class="collapsible-body">
+        <table>
+          <thead class="visually-hidden">
+            <tr>
+              <th scope="col">{% translate 'Tool name' %}</th>
+              <th scope="col"></th>
+              <th scope="col">{% translate 'Action link' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="model-algo-status">
+              <th scope="row">
+                <a href="{% url 'admin:algo_status' %}" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                  <span>⚡ Algorithm Status & Execution Monitor</span>
+                </a>
+              </th>
+              <td></td>
+              <td>
+                <a href="{% url 'admin:algo_status' %}" class="viewlink" title="Open Algorithm Status Monitor">View</a>
+              </td>
+            </tr>
+            <tr class="model-positions-pnl">
+              <th scope="row">
+                <a href="{% url 'admin:positions_pnl' %}" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                  <span>📊 Multi-Broker Positions & P&L Analytics</span>
+                </a>
+              </th>
+              <td></td>
+              <td>
+                <a href="{% url 'admin:positions_pnl' %}" class="viewlink" title="Open Positions & P&L Analytics">View</a>
+              </td>
+            </tr>
+            <tr class="model-data-hub">
+              <th scope="row">
+                <a href="{% url 'admin:data_hub' %}" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                  <span>📦 Data Hub & Cloud Synchronizer</span>
+                </a>
+              </th>
+              <td></td>
+              <td>
+                <a href="{% url 'admin:data_hub' %}" class="viewlink" title="Open Data Hub & Cloud Synchronizer">View</a>
+              </td>
+            </tr>
+            <tr class="model-deployment-hub">
+              <th scope="row">
+                <a href="{% url 'admin:deployment_hub' %}" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                  <span>🚀 Cloud Deployment & Git Operations Hub</span>
+                </a>
+              </th>
+              <td></td>
+              <td>
+                <a href="{% url 'admin:deployment_hub' %}" class="viewlink" title="Open Cloud Deployment & Git Hub">View</a>
+              </td>
+            </tr>
+            <tr class="model-candle-visualizer">
+              <th scope="row">
+                <a href="{% url 'admin:candle_visualizer' %}" target="_blank" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                  <span>📈 Candle Chart Visualizer (Debug Workstation) ↗</span>
+                </a>
+              </th>
+              <td></td>
+              <td>
+                <a href="{% url 'admin:candle_visualizer' %}" target="_blank" class="viewlink" title="Open Candle Chart Visualizer">View</a>
+              </td>
+            </tr>
+            <tr class="model-log-analyzer">
+              <th scope="row">
+                <a href="{% url 'admin:algo_log_analyzer' %}" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                  <span>🔍 Log Anomaly Analyzer (Debug Workstation)</span>
+                </a>
+              </th>
+              <td></td>
+              <td>
+                <a href="{% url 'admin:algo_log_analyzer' %}" class="viewlink" title="Open Log Anomaly Analyzer">View</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Card 2: MAIN APPLICATIONS (Kalai Trading Platform) -->
+    {% if app_list %}
+      {% for app in app_list %}
+        {% if app.app_label != 'auth' %}
+          <div class="collapsible-module app-{{ app.app_label }}{% if app.app_url in request.path|urlencode %} current-app{% endif %}" id="sec-app-{{ app.app_label }}">
+            <div class="collapsible-header" onclick="toggleSection('sec-app-{{ app.app_label }}');" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')toggleSection('sec-app-{{ app.app_label }}');">
+              <div class="collapsible-title-group">
+                <h3 class="collapsible-title">
+                  <span>{{ app.name }}</span>
+                </h3>
+                <span class="collapsible-count">{{ app.models|length }} model{{ app.models|length|pluralize }}</span>
+              </div>
+              <div class="collapsible-toggle-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+
+            <div class="collapsible-body">
+              <table>
+                <thead class="visually-hidden">
+                  <tr>
+                    <th scope="col">{% translate 'Model name' %}</th>
+                    <th scope="col">{% translate 'Add link' %}</th>
+                    <th scope="col">{% translate 'Change or view list link' %}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for model in app.models %}
+                    {% with model_name=model.object_name|lower %}
+                      <tr class="model-{{ model_name }}{% if model.admin_url in request.path|urlencode %} current-model{% endif %}">
+                        <th scope="row" id="{{ app.app_label }}-{{ model_name }}">
+                          {% if model.admin_url %}
+                            <a href="{{ model.admin_url }}"{% if model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>{{ model.name }}</a>
+                          {% else %}
+                            {{ model.name }}
+                          {% endif %}
+                        </th>
+
+                        {% if model.add_url %}
+                          <td><a href="{{ model.add_url }}" class="addlink" aria-describedby="{{ app.app_label }}-{{ model_name }}">{% translate 'Add' %}</a></td>
+                        {% else %}
+                          <td></td>
+                        {% endif %}
+
+                        {% if model.admin_url and show_changelinks %}
+                          {% if model.view_only %}
+                            <td><a href="{{ model.admin_url }}" class="viewlink" aria-describedby="{{ app.app_label }}-{{ model_name }}">{% translate 'View' %}</a></td>
+                          {% else %}
+                            <td><a href="{{ model.admin_url }}" class="changelink" aria-describedby="{{ app.app_label }}-{{ model_name }}">{% translate 'Change' %}</a></td>
+                          {% endif %}
+                        {% elif show_changelinks %}
+                          <td></td>
+                        {% endif %}
+                      </tr>
+                    {% endwith %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    <!-- Card 3: DOCUMENTATION -->
+    <div class="collapsible-module app-documentation" id="sec-documentation">
+      <div class="collapsible-header" onclick="toggleSection('sec-documentation');" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')toggleSection('sec-documentation');">
+        <div class="collapsible-title-group">
+          <h3 class="collapsible-title">
+            <span>📘 Documentation</span>
+          </h3>
+          <span class="collapsible-count">1 guide</span>
+        </div>
+        <div class="collapsible-toggle-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <div class="collapsible-body">
+        <table>
+          <thead class="visually-hidden">
+            <tr>
+              <th scope="col">{% translate 'Document name' %}</th>
+              <th scope="col"></th>
+              <th scope="col">{% translate 'Action link' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="model-credential-guide">
+              <th scope="row">
+                <a href="{% url 'admin:broker_credential_guide' %}" style="display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                  <span>📘 Multi-Broker Setup & Credential Mapping Guide</span>
+                </a>
+              </th>
+              <td></td>
+              <td>
+                <a href="{% url 'admin:broker_credential_guide' %}" class="viewlink" title="Open Setup Guide">View</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Card 4: AUTHENTICATION & PERMISSIONS -->
+    {% if app_list %}
+      {% for app in app_list %}
+        {% if app.app_label == 'auth' %}
+          <div class="collapsible-module app-{{ app.app_label }}{% if app.app_url in request.path|urlencode %} current-app{% endif %}" id="sec-app-auth">
+            <div class="collapsible-header" onclick="toggleSection('sec-app-auth');" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')toggleSection('sec-app-auth');">
+              <div class="collapsible-title-group">
+                <h3 class="collapsible-title">
+                  <span>🔐 {{ app.name }}</span>
+                </h3>
+                <span class="collapsible-count">{{ app.models|length }} model{{ app.models|length|pluralize }}</span>
+              </div>
+              <div class="collapsible-toggle-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+
+            <div class="collapsible-body">
+              <table>
+                <thead class="visually-hidden">
+                  <tr>
+                    <th scope="col">{% translate 'Model name' %}</th>
+                    <th scope="col">{% translate 'Add link' %}</th>
+                    <th scope="col">{% translate 'Change or view list link' %}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for model in app.models %}
+                    {% with model_name=model.object_name|lower %}
+                      <tr class="model-{{ model_name }}{% if model.admin_url in request.path|urlencode %} current-model{% endif %}">
+                        <th scope="row" id="{{ app.app_label }}-{{ model_name }}">
+                          {% if model.admin_url %}
+                            <a href="{{ model.admin_url }}"{% if model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>{{ model.name }}</a>
+                          {% else %}
+                            {{ model.name }}
+                          {% endif %}
+                        </th>
+
+                        {% if model.add_url %}
+                          <td><a href="{{ model.add_url }}" class="addlink" aria-describedby="{{ app.app_label }}-{{ model_name }}">{% translate 'Add' %}</a></td>
+                        {% else %}
+                          <td></td>
+                        {% endif %}
+
+                        {% if model.admin_url and show_changelinks %}
+                          {% if model.view_only %}
+                            <td><a href="{{ model.admin_url }}" class="viewlink" aria-describedby="{{ app.app_label }}-{{ model_name }}">{% translate 'View' %}</a></td>
+                          {% else %}
+                            <td><a href="{{ model.admin_url }}" class="changelink" aria-describedby="{{ app.app_label }}-{{ model_name }}">{% translate 'Change' %}</a></td>
+                          {% endif %}
+                        {% elif show_changelinks %}
+                          <td></td>
+                        {% endif %}
+                      </tr>
+                    {% endwith %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    <!-- Card 5: RECENT ACTIONS (Clubbed directly with other collapsible sections) -->
+    <div class="collapsible-module" id="sec-recent-actions">
+      <div class="collapsible-header" onclick="toggleSection('sec-recent-actions');" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')toggleSection('sec-recent-actions');">
+        <div class="collapsible-title-group">
+          <h3 class="collapsible-title">
+            <span>🕒 {% translate 'Recent actions' %}</span>
+          </h3>
+          {% load log %}
+          {% get_admin_log 10 as admin_log for_user user %}
+          <span class="collapsible-count">{{ admin_log|length }} action{{ admin_log|length|pluralize }}</span>
+        </div>
+        <div class="collapsible-toggle-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <div class="collapsible-body" style="padding: 12px 16px;">
+        {% if not admin_log %}
+          <p style="margin: 0; color: var(--body-quiet-color, #768390); font-size: 13px;">{% translate 'None available' %}</p>
+        {% else %}
+          <ul class="actionlist" style="margin: 0; padding: 0; list-style: none;">
+          {% for entry in admin_log %}
+            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}" style="padding: 8px 0; border-bottom: 1px solid var(--hairline-color, #2d333b); list-style: none; font-size: 13px;">
+              <span class="visually-hidden">{% if entry.is_addition %}{% translate 'Added:' %}{% elif entry.is_change %}{% translate 'Changed:' %}{% elif entry.is_deletion %}{% translate 'Deleted:' %}{% endif %}</span>
+              {% if entry.is_deletion or not entry.get_admin_url %}
+                <strong>{{ entry.object_repr|to_object_display_value }}</strong>
+              {% else %}
+                <a href="{{ entry.get_admin_url }}" style="font-weight: 600;">{{ entry.object_repr|to_object_display_value }}</a>
+              {% endif %}
+              <br>
+              {% if entry.content_type %}
+                <span class="mini quiet" style="font-size: 11px; color: var(--body-quiet-color, #768390);">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+              {% else %}
+                <span class="mini quiet" style="font-size: 11px; color: var(--body-quiet-color, #768390);">{% translate 'Unknown content' %}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </div>
+
+  </div> <!-- end dashboard-sections-grid -->
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- 3. LIVE SYSTEM TELEMETRY & EVENT HUB (At Bottom)                         -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  {% if system_hub %}
+  <div class="sys-hub-card" id="systemHubModule">
+    <div class="sys-hub-header">
+      <div class="sys-hub-title-group">
+        <span class="sys-pulse-dot {% if system_hub.summary.health_status == 'CRITICAL' %}pulse-critical{% elif system_hub.summary.health_status == 'WARNING' %}pulse-warning{% else %}pulse-normal{% endif %}"></span>
+        <h2 class="sys-hub-title">
+          <span>📡 System Telemetry & Event Hub</span>
+        </h2>
+        {% if system_hub.summary.health_status == 'CRITICAL' %}
+          <span class="sys-tab-badge badge-danger">Critical Attention</span>
+        {% elif system_hub.summary.health_status == 'WARNING' %}
+          <span class="sys-tab-badge badge-warning">Warnings Present</span>
+        {% else %}
+          <span class="sys-tab-badge badge-success">Systems Operational</span>
+        {% endif %}
+      </div>
+
+      <div class="sys-hub-actions">
+        <span class="sys-event-time" id="sysHubClock" title="{{ system_hub.timestamp }}">🕒 {{ system_hub.time_ist }}</span>
+        <button type="button" class="sys-hub-btn sys-hub-btn-outline" id="btnRefreshHub" onclick="refreshSystemHub();" title="Fetch fresh telemetry from server">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Refresh</span>
+        </button>
+        <button type="button" class="sys-hub-btn sys-hub-btn-outline" id="btnToggleHubMinimize" onclick="toggleHubMinimize();" title="Collapse or Expand Event Hub">
+          <span id="hubMinimizeLabel">Minimize</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Hub Body -->
+    <div id="sysHubBody">
+      <!-- Tabs Navigation -->
+      <div class="sys-tabs-nav" role="tablist">
+        <button type="button" class="sys-tab-btn active" onclick="switchHubTab(this, 'tab-all');">
+          <span>📌 All Events</span>
+        </button>
+        <button type="button" class="sys-tab-btn" onclick="switchHubTab(this, 'tab-expiries');">
+          <span>🔑 Key Expiries</span>
+          {% if system_hub.summary.secret_alert_count > 0 %}
+            <span class="sys-tab-badge badge-danger">{{ system_hub.summary.secret_alert_count }}</span>
+          {% endif %}
+        </button>
+        <button type="button" class="sys-tab-btn" onclick="switchHubTab(this, 'tab-logins');">
+          <span>🔐 Broker Logins</span>
+          {% if system_hub.summary.login_pending_count > 0 %}
+            <span class="sys-tab-badge badge-warning">{{ system_hub.summary.login_pending_count }}</span>
+          {% endif %}
+        </button>
+        <button type="button" class="sys-tab-btn" onclick="switchHubTab(this, 'tab-errors');">
+          <span>⚠️ Errors & Warnings</span>
+          {% if system_hub.summary.error_count > 0 %}
+            <span class="sys-tab-badge badge-danger">{{ system_hub.summary.error_count }}</span>
+          {% elif system_hub.summary.warning_count > 0 %}
+            <span class="sys-tab-badge badge-warning">{{ system_hub.summary.warning_count }}</span>
+          {% endif %}
+        </button>
+        <button type="button" class="sys-tab-btn" onclick="switchHubTab(this, 'tab-markets');">
+          <span>📅 Market Schedules</span>
+          <span class="sys-tab-badge badge-info">{{ system_hub.market_events|length }}</span>
+        </button>
+      </div>
+
+      <!-- Tab Panels -->
+      <!-- 1. All Combined Events -->
+      <div class="sys-tab-panel active" id="tab-all">
+        <div class="sys-event-list">
+          {% for alert in system_hub.secret_alerts %}
+          <div class="sys-event-row">
+            <div class="sys-event-left">
+              <span class="sys-event-icon">{% if alert.is_expired %}🚨{% else %}⚠️{% endif %}</span>
+              <div class="sys-event-details">
+                <div class="sys-event-title">
+                  <span>Secret Key {% if alert.is_expired %}Expired{% else %}Expiring Soon{% endif %}</span>
+                  <span class="sys-tab-badge {% if alert.is_expired %}badge-danger{% else %}badge-warning{% endif %}">{{ alert.account_id }}</span>
+                </div>
+                <div class="sys-event-msg">
+                  {% if alert.is_expired %}
+                    API Secret Key expired on {{ alert.expires_at }}. Trading and live websocket feeds are disabled.
+                  {% else %}
+                    API Secret Key expires in <strong>{{ alert.days_left }} day{{ alert.days_left|pluralize }}</strong> (on {{ alert.expires_at }}).
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="sys-event-right">
+              <a href="{{ alert.edit_url }}" class="sys-hub-btn">Renew Key &rarr;</a>
+            </div>
+          </div>
+          {% endfor %}
+
+          {% for b in system_hub.broker_logins %}
+            {% if b.auth_state != 'SUCCESS' and b.auth_state != 'KEY_ACTIVE' %}
+            <div class="sys-event-row">
+              <div class="sys-event-left">
+                <span class="sys-event-icon">🔐</span>
+                <div class="sys-event-details">
+                  <div class="sys-event-title">
+                    <span>{{ b.broker_name }} ({{ b.account_id }})</span>
+                    <span class="sys-tab-badge {{ b.badge_type }}">{{ b.auth_label }}</span>
+                  </div>
+                  <div class="sys-event-msg">Last active token: {{ b.token_updated_at }} ({{ b.token_relative }}). Daily 2FA login required.</div>
+                </div>
+              </div>
+              <div class="sys-event-right">
+                <a href="{{ b.login_url }}" class="sys-hub-btn sys-hub-btn-outline">Login Now &rarr;</a>
+              </div>
+            </div>
+            {% endif %}
+          {% endfor %}
+
+          {% for err in system_hub.recent_errors %}
+          <div class="sys-event-row">
+            <div class="sys-event-left">
+              <span class="sys-event-icon">{% if err.level == 'ERROR' %}❌{% else %}⚠️{% endif %}</span>
+              <div class="sys-event-details">
+                <div class="sys-event-title">
+                  <span class="sys-tab-badge {% if err.level == 'ERROR' %}badge-danger{% else %}badge-warning{% endif %}">{{ err.level }}</span>
+                  <span>[{{ err.account }}] [{{ err.tag }}]</span>
+                </div>
+                <div class="sys-event-msg">{{ err.message }}</div>
+              </div>
+            </div>
+            <div class="sys-event-right">
+              <span class="sys-event-time">{{ err.relative_time }}</span>
+            </div>
+          </div>
+          {% endfor %}
+
+          {% if not system_hub.secret_alerts and not system_hub.recent_errors %}
+          <div class="empty-state-card">
+            <p>✅ All system logs, broker credentials, and algorithmic cycles are currently healthy with zero critical errors.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- 2. Secret Key Expiries Panel -->
+      <div class="sys-tab-panel" id="tab-expiries">
+        <div class="sys-event-list">
+          {% if system_hub.secret_alerts %}
+            {% for alert in system_hub.secret_alerts %}
+            <div class="sys-event-row">
+              <div class="sys-event-left">
+                <span class="sys-event-icon">{% if alert.is_expired %}🚨{% else %}🔑{% endif %}</span>
+                <div class="sys-event-details">
+                  <div class="sys-event-title">
+                    <span>{{ alert.broker_title }} ({{ alert.account_id }})</span>
+                    <span class="sys-tab-badge {% if alert.is_expired %}badge-danger{% else %}badge-warning{% endif %}">
+                      {% if alert.is_expired %}Expired{% else %}{{ alert.days_left }}d left{% endif %}
+                    </span>
+                  </div>
+                  <div class="sys-event-msg">Added on <strong>{{ alert.added_at }}</strong> &bull; Valid for {{ alert.validity_days }} days &bull; Expires: <strong>{{ alert.expires_at }}</strong></div>
+                </div>
+              </div>
+              <div class="sys-event-right">
+                <a href="{{ alert.edit_url }}" class="sys-hub-btn">Update Credential &rarr;</a>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state-card">
+              <p>🎉 Zero API secret keys are expiring soon. All tracked broker credentials are up to date.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- 3. Broker Logins Panel -->
+      <div class="sys-tab-panel" id="tab-logins">
+        <div class="sys-event-list">
+          {% for b in system_hub.broker_logins %}
+          <div class="sys-event-row">
+            <div class="sys-event-left">
+              <span class="sys-event-icon">{% if b.auth_state == 'SUCCESS' or b.auth_state == 'KEY_ACTIVE' %}✅{% else %}🔒{% endif %}</span>
+              <div class="sys-event-details">
+                <div class="sys-event-title">
+                  <span>{{ b.broker_name }} &bull; <strong>{{ b.account_id }}</strong></span>
+                  <span class="sys-tab-badge {{ b.badge_type }}">{{ b.auth_label }}</span>
+                </div>
+                <div class="sys-event-msg">
+                  Trading: {% if b.enable_trade %}<strong style="color: #3fb950;">Enabled</strong>{% else %}<span style="color: #768390;">Disabled</span>{% endif %} &bull; 
+                  Last Token Sync: <strong>{{ b.token_updated_at }}</strong> ({{ b.token_relative }})
+                </div>
+              </div>
+            </div>
+            <div class="sys-event-right">
+              <a href="{{ b.login_url }}" class="sys-hub-btn sys-hub-btn-outline">Authorize / 2FA</a>
+              <a href="{{ b.edit_url }}" class="sys-hub-btn sys-hub-btn-outline" title="Edit account credentials">Edit</a>
+            </div>
+          </div>
+          {% empty %}
+          <div class="empty-state-card">
+            <p>No active broker accounts found in database.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 4. Errors & Warnings Panel -->
+      <div class="sys-tab-panel" id="tab-errors">
+        <div class="sys-event-list">
+          {% for err in system_hub.recent_errors %}
+          <div class="sys-event-row">
+            <div class="sys-event-left">
+              <span class="sys-event-icon">{% if err.level == 'ERROR' %}❌{% else %}⚠️{% endif %}</span>
+              <div class="sys-event-details">
+                <div class="sys-event-title">
+                  <span class="sys-tab-badge {% if err.level == 'ERROR' %}badge-danger{% else %}badge-warning{% endif %}">{{ err.level }}</span>
+                  <span>{{ err.account }} &bull; [{{ err.tag }}]</span>
+                  <span class="sys-event-time">{{ err.timestamp_str }}</span>
+                </div>
+                <div class="sys-event-msg">{{ err.message }}</div>
+              </div>
+            </div>
+            <div class="sys-event-right">
+              <span class="sys-event-time">{{ err.relative_time }}</span>
+            </div>
+          </div>
+          {% empty %}
+          <div class="empty-state-card">
+            <p>✨ No error or warning logs recorded in the last 48 hours.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 5. Market Schedules Panel -->
+      <div class="sys-tab-panel" id="tab-markets">
+        <div class="sys-event-list">
+          {% for m in system_hub.market_events %}
+          <div class="sys-event-row">
+            <div class="sys-event-left">
+              <span class="sys-event-icon">{{ m.icon }}</span>
+              <div class="sys-event-details">
+                <div class="sys-event-title">
+                  <span>{{ m.title }}</span>
+                  <span class="sys-tab-badge {{ m.badge }}">{{ m.status }}</span>
+                </div>
+                <div class="sys-event-msg">Schedule: <strong>{{ m.schedule }}</strong></div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!-- CLIENT ENGINE: COLLAPSIBLE STORAGE & TELEMETRY LIVE UPDATES              -->
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!-- CLIENT ENGINE: COLLAPSIBLE STORAGE & TELEMETRY LIVE UPDATES              -->
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<script {% csp_nonce_attr %}>
+const STORAGE_KEY_SECTIONS = "deltazero_admin_collapsed_sections";
+const STORAGE_KEY_HUB_MIN = "deltazero_admin_hub_minimized";
+
+// Load user's persisted collapsed sections immediately
+function getStoredCollapsed() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SECTIONS);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveStoredCollapsed(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY_SECTIONS, JSON.stringify(state));
+  } catch (e) {}
+}
+
+function toggleSection(sectionId) {
+  const el = document.getElementById(sectionId);
+  if (!el) return;
+  const isCollapsed = el.classList.toggle("is-collapsed");
+  const state = getStoredCollapsed();
+  state[sectionId] = isCollapsed;
+  saveStoredCollapsed(state);
+}
+
+function toggleAllSections(collapse) {
+  const sections = document.querySelectorAll(".collapsible-module");
+  const state = getStoredCollapsed();
+  sections.forEach(el => {
+    if (collapse) {
+      el.classList.add("is-collapsed");
+      state[el.id] = true;
+    } else {
+      el.classList.remove("is-collapsed");
+      state[el.id] = false;
+    }
+  });
+  saveStoredCollapsed(state);
+}
+
+// Quick Dashboard Filter
+function filterAdminDashboard(query) {
+  const q = (query || "").trim().toLowerCase();
+  const rows = document.querySelectorAll(".collapsible-body tr, .collapsible-body li");
+  rows.forEach(item => {
+    const text = item.innerText.toLowerCase();
+    if (!q || text.includes(q)) {
+      item.style.display = "";
+    } else {
+      item.style.display = "none";
+    }
+  });
+
+  // Auto expand sections containing matches
+  if (q) {
+    document.querySelectorAll(".collapsible-module").forEach(sec => {
+      const visibleItems = sec.querySelectorAll(".collapsible-body tr:not([style*='display: none']), .collapsible-body li:not([style*='display: none'])");
+      if (visibleItems.length > 0) {
+        sec.classList.remove("is-collapsed");
+      }
+    });
+  }
+}
+
+// Telemetry Hub Tab Switcher
+function switchHubTab(btn, panelId) {
+  document.querySelectorAll(".sys-tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".sys-tab-panel").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  const p = document.getElementById(panelId);
+  if (p) p.classList.add("active");
+}
+
+// Hub Minimize Toggle
+function toggleHubMinimize() {
+  const body = document.getElementById("sysHubBody");
+  const label = document.getElementById("hubMinimizeLabel");
+  if (!body) return;
+  const isHidden = (body.style.display === "none");
+  body.style.display = isHidden ? "block" : "none";
+  if (label) label.textContent = isHidden ? "Minimize" : "Expand";
+  try {
+    localStorage.setItem(STORAGE_KEY_HUB_MIN, isHidden ? "0" : "1");
+  } catch (e) {}
+}
+
+// Live AJAX Hub Refresher
+async function refreshSystemHub() {
+  const btn = document.getElementById("btnRefreshHub");
+  const clock = document.getElementById("sysHubClock");
+  if (btn) btn.innerHTML = "<span>Syncing...</span>";
+  try {
+    const res = await fetch("/api/admin-hub/events/?force=1", {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success) {
+        if (clock) clock.textContent = "🕒 " + data.time_ist;
+        // Reload tab content dynamically or soft-reload
+        window.location.reload();
+      }
+    }
+  } catch (err) {
+    console.warn("Telemetry refresh error:", err);
+  } finally {
+    if (btn) btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>Refresh</span>`;
+  }
+}
+
+// Initialize on DOM Ready
+(function initDashboard() {
+  // Restore section states
+  const state = getStoredCollapsed();
+  Object.keys(state).forEach(id => {
+    if (state[id]) {
+      const el = document.getElementById(id);
+      if (el) el.classList.add("is-collapsed");
+    }
+  });
+
+  // Restore Hub minimize state
+  try {
+    if (localStorage.getItem(STORAGE_KEY_HUB_MIN) === "1") {
+      const body = document.getElementById("sysHubBody");
+      const label = document.getElementById("hubMinimizeLabel");
+      if (body) body.style.display = "none";
+      if (label) label.textContent = "Expand";
+    }
+  } catch (e) {}
+})();
+</script>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

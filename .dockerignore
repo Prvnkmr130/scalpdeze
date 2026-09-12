@@ -1,0 +1,35 @@
+.git
+.gitignore
+**/__pycache__
+**/*.py[cod]
+**/*$py.class
+.venv
+.env.example
+postgres_data
+*.md
+.ruff_cache
+.pytest_cache
+docker-compose*.yml
+.agents
+DJANGO_Q2_USAGE.md
+id_ed25519_private
+
+# Environment variables
+.env
+
+# Logs and Caches
+logs
+.uv
+.DS_Store
+Thumbs.db
+
+# Generated directories and files
+staticfiles
+response.html
+openapi.json
+
+# Host-level scripts and configs
+deploy.sh
+server-hardening-script.sh
+README.md
+.python-version

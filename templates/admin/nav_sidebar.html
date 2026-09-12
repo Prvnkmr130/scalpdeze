@@ -1,0 +1,168 @@
+{% load i18n %}
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="{% translate 'Toggle navigation' %}"></button>
+<nav class="sticky" id="nav-sidebar" aria-label="{% translate 'Sidebar' %}" aria-expanded="{% if show_nav_sidebar %}true{% else %}false{% endif %}">
+  <input type="search" id="nav-filter"
+         aria-label="{% translate 'Filter navigation items' %}"
+         placeholder="{% translate 'Start typing to filter…' %}">
+
+  <!-- 1. Algo Monitoring Section (Top) -->
+  <div class="app-algo-monitoring module">
+    <table>
+      <caption>
+        <a href="{% url 'admin:algo_monitoring' %}" class="section" title="Open Algo Monitoring Hub">⚡ Algo Monitoring</a>
+      </caption>
+      <thead class="visually-hidden">
+        <tr>
+          <th scope="col">{% translate 'Tool name' %}</th>
+          <th scope="col"></th>
+          <th scope="col">{% translate 'Action link' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="model-algo-status">
+          <th scope="row" id="algo-monitoring-status">
+            <a href="{% url 'admin:algo_status' %}">⚡ Algo Status</a>
+          </th>
+          <td></td>
+        </tr>
+        <tr class="model-positions-pnl">
+          <th scope="row" id="algo-monitoring-positions-pnl">
+            <a href="{% url 'admin:positions_pnl' %}">📊 Positions & P&L</a>
+          </th>
+          <td></td>
+        </tr>
+        <tr class="model-data-hub">
+          <th scope="row" id="algo-monitoring-data-hub">
+            <a href="{% url 'admin:data_hub' %}">📦 Data Hub & Sync</a>
+          </th>
+          <td></td>
+        </tr>
+        <tr class="model-deployment-hub">
+          <th scope="row" id="algo-monitoring-deployment-hub">
+            <a href="{% url 'admin:deployment_hub' %}">🚀 Deployment Hub</a>
+          </th>
+          <td></td>
+        </tr>
+        <tr class="model-candle-visualizer">
+          <th scope="row" id="algo-monitoring-candle-visualizer">
+            <a href="{% url 'admin:candle_visualizer' %}" target="_blank" title="Open Interactive Candle Chart Visualizer (Debug Workstation)">📈 Candle Visualizer ↗</a>
+          </th>
+          <td></td>
+        </tr>
+        <tr class="model-log-analyzer">
+          <th scope="row" id="algo-monitoring-log-analyzer">
+            <a href="{% url 'admin:algo_log_analyzer' %}" title="Open Log Anomaly Analyzer (Debug Workstation)">🔍 Log Analyzer</a>
+          </th>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 2. Main Applications (e.g. Kalai) -->
+  {% if available_apps %}
+    {% for app in available_apps %}
+      {% if app.app_label != 'auth' %}
+        <div class="app-{{ app.app_label }} module{% if app.app_url in request.path|urlencode %} current-app{% endif %}">
+          <table>
+            <caption>
+              <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>
+            </caption>
+            <thead class="visually-hidden">
+              <tr>
+                <th scope="col">{% translate 'Model name' %}</th>
+                <th scope="col">{% translate 'Add link' %}</th>
+                <th scope="col">{% translate 'Change or view list link' %}</th>
+              </tr>
+            </thead>
+            {% for model in app.models %}
+              {% with model_name=model.object_name|lower %}
+                <tr class="model-{{ model_name }}{% if model.admin_url in request.path|urlencode %} current-model{% endif %}">
+                  <th scope="row" id="{{ app.app_label }}-{{ model_name }}">
+                    {% if model.admin_url %}
+                      <a href="{{ model.admin_url }}"{% if model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>{{ model.name }}</a>
+                    {% else %}
+                      {{ model.name }}
+                    {% endif %}
+                  </th>
+                  {% if model.add_url %}
+                    <td><a href="{{ model.add_url }}" class="addlink" aria-describedby="{{ app.app_label }}-{{ model_name }}">{% translate 'Add' %}</a></td>
+                  {% else %}
+                    <td></td>
+                  {% endif %}
+                </tr>
+              {% endwith %}
+            {% endfor %}
+          </table>
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+
+  <!-- 3. Documentation Section -->
+  <div class="app-documentation module">
+    <table>
+      <caption>
+        <a href="{% url 'admin:broker_credential_guide' %}" class="section" title="Multi-Broker Setup & Credential Mapping Guide">
+          📘 Documentation
+        </a>
+      </caption>
+      <thead class="visually-hidden">
+        <tr>
+          <th scope="col">{% translate 'Document name' %}</th>
+          <th scope="col"></th>
+          <th scope="col">{% translate 'Action link' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="model-credential-guide">
+          <th scope="row" id="doc-setup-guide">
+            <a href="{% url 'admin:broker_credential_guide' %}">📘 Setup Guide</a>
+          </th>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 4. Authentication & Authorization Section (Bottom) -->
+  {% if available_apps %}
+    {% for app in available_apps %}
+      {% if app.app_label == 'auth' %}
+        <div class="app-{{ app.app_label }} module{% if app.app_url in request.path|urlencode %} current-app{% endif %}">
+          <table>
+            <caption>
+              <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>
+            </caption>
+            <thead class="visually-hidden">
+              <tr>
+                <th scope="col">{% translate 'Model name' %}</th>
+                <th scope="col">{% translate 'Add link' %}</th>
+                <th scope="col">{% translate 'Change or view list link' %}</th>
+              </tr>
+            </thead>
+            {% for model in app.models %}
+              {% with model_name=model.object_name|lower %}
+                <tr class="model-{{ model_name }}{% if model.admin_url in request.path|urlencode %} current-model{% endif %}">
+                  <th scope="row" id="{{ app.app_label }}-{{ model_name }}">
+                    {% if model.admin_url %}
+                      <a href="{{ model.admin_url }}"{% if model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>{{ model.name }}</a>
+                    {% else %}
+                      {{ model.name }}
+                    {% endif %}
+                  </th>
+                  {% if model.add_url %}
+                    <td><a href="{{ model.add_url }}" class="addlink" aria-describedby="{{ app.app_label }}-{{ model_name }}">{% translate 'Add' %}</a></td>
+                  {% else %}
+                    <td></td>
+                  {% endif %}
+                </tr>
+              {% endwith %}
+            {% endfor %}
+          </table>
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+
+</nav>

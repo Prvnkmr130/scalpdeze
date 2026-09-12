@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Broker Login & Token Manager</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --primary: #0284c7;
+            --primary-hover: #0369a1;
+            --bg-main: #090d16;
+            --card-bg: #111827;
+            --card-border: #1f2937;
+            --card-hover-border: #374151;
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --success-bg: rgba(16, 185, 129, 0.12);
+            --success-text: #34d399;
+            --success-border: rgba(16, 185, 129, 0.3);
+            --warn-bg: rgba(245, 158, 11, 0.12);
+            --warn-text: #fbbf24;
+            --warn-border: rgba(245, 158, 11, 0.3);
+            --danger-bg: rgba(239, 68, 68, 0.12);
+            --danger-text: #f87171;
+            --danger-border: rgba(239, 68, 68, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 860px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* App Bar */
+        .app-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            gap: 12px;
+        }
+
+        .app-title h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.01em;
+        }
+
+        .app-title p {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin-top: 2px;
+        }
+
+        .btn-nav {
+            background: linear-gradient(135deg, #0077ff, #00d4ff) !important;
+            color: #ffffff !important;
+            padding: 8px 18px !important;
+            border-radius: 8px !important;
+            font-size: 0.85rem !important;
+            font-weight: 700 !important;
+            text-decoration: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            white-space: nowrap !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 2px 10px rgba(0, 119, 255, 0.5), 0 0 20px rgba(0, 212, 255, 0.3) !important;
+            transition: all 0.2s ease-in-out !important;
+            cursor: pointer !important;
+        }
+
+        .btn-nav:hover {
+            background: linear-gradient(135deg, #0066ee, #00bfee) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 16px rgba(0, 119, 255, 0.7), 0 0 28px rgba(0, 212, 255, 0.45) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        .btn-nav:active {
+            transform: translateY(0) !important;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-success {
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: var(--success-text);
+        }
+
+        .alert-error {
+            background: var(--danger-bg);
+            border: 1px solid var(--danger-border);
+            color: var(--danger-text);
+        }
+
+        .alert-warning {
+            background: var(--warn-bg);
+            border: 1px solid var(--warn-border);
+            color: var(--warn-text);
+        }
+
+        /* Accounts List */
+        .accounts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* Account Card */
+        .account-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: border-color 0.15s;
+        }
+
+        .account-card:hover {
+            border-color: var(--card-hover-border);
+        }
+
+        /* Card Header */
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .account-identity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .account-id-badge {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .broker-chip {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(2, 132, 199, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(2, 132, 199, 0.25);
+            text-transform: capitalize;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            font-size: 0.775rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .status-active {
+            background: var(--success-bg);
+            color: var(--success-text);
+            border: 1px solid var(--success-border);
+        }
+
+        .status-warn {
+            background: var(--warn-bg);
+            color: var(--warn-text);
+            border: 1px solid var(--warn-border);
+        }
+
+        .status-expired {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+            border: 1px solid var(--danger-border);
+        }
+
+        /* Metadata Grid */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #090d16;
+            border: 1px solid #1f2937;
+            padding: 10px 12px;
+            border-radius: 8px;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .meta-label {
+            font-size: 0.7rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .meta-value {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #e5e7eb;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Callback URL Row */
+        .callback-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #090d16;
+            border: 1px dashed #374151;
+            padding: 8px 12px;
+            border-radius: 8px;
+            gap: 10px;
+        }
+
+        .callback-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            gap: 2px;
+        }
+
+        .callback-label {
+            font-size: 0.675rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .callback-url-text {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            color: #cbd5e1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn-copy {
+            background: #1f2937;
+            border: 1px solid #374151;
+            color: #e5e7eb;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .btn-copy:hover {
+            background: #374151;
+            color: #ffffff;
+        }
+
+        /* Action Buttons */
+        .card-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 11px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: #1f2937;
+            color: #e5e7eb;
+            border: 1px solid #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #374151;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 24px 0 8px 0;
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-align: center;
+        }
+
+        /* Mobile Optimization */
+        @media (max-width: 640px) {
+            body {
+                padding: 10px 8px;
+            }
+
+            .app-bar {
+                padding: 10px 12px;
+            }
+
+            .app-title h1 {
+                font-size: 1.05rem;
+            }
+
+            .meta-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .meta-grid .meta-item:last-child {
+                grid-column: 1 / -1;
+            }
+
+            .account-card {
+                padding: 14px;
+                gap: 12px;
+            }
+
+            .btn-action {
+                padding: 12px 14px;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Top App Bar -->
+        <div class="app-bar">
+            <div class="app-title">
+                <h1>Broker Login & Tokens</h1>
+                <p>Authentication Manager</p>
+            </div>
+            <a href="{{ return_url }}" id="adminBackBtn" class="btn-nav">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+                <span>Home</span>
+            </a>
+        </div>
+
+        <!-- Alert Notifications -->
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-warning{% endif %}">
+            {% if message.tags == 'success' %}✔{% elif message.tags == 'error' %}✘{% else %}ℹ{% endif %} {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- Accounts List -->
+        <div class="accounts-list">
+            {% for item in broker_items %}
+            <div class="account-card">
+                <!-- Top Row: Account & Status -->
+                <div class="card-top">
+                    <div class="account-identity">
+                        <span class="account-id-badge">{{ item.account_id }}</span>
+                        <span class="broker-chip">{{ item.broker.broker_name.name|default:item.broker.broker_name_id }}</span>
+                    </div>
+
+                    {% if item.token_status == "ACTIVE_TODAY" %}
+                    <span class="status-badge status-active">● Active (Today)</span>
+                    {% elif item.token_status == "ACTIVE_24H" %}
+                    <span class="status-badge status-warn">● Active (&lt;24h)</span>
+                    {% else %}
+                    <span class="status-badge status-expired">● Expired / Missing</span>
+                    {% endif %}
+                </div>
+
+                <!-- Account Metadata Details -->
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">API Provider</span>
+                        <span class="meta-value">{{ item.broker.api_provider.name|default:"Not Set" }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">WebSocket Feed</span>
+                        <span class="meta-value">{% if item.broker.enable_websocket %}🟢 Enabled{% else %}⚪ Disabled{% endif %}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Last Updated</span>
+                        <span class="meta-value">{{ item.broker.access_token_updated_at|date:"d M Y, H:i"|default:"Never" }}</span>
+                    </div>
+                </div>
+
+                <!-- Callback URL Copy Box -->
+                <div class="callback-row" title="{{ item.callback_url }}">
+                    <div class="callback-info">
+                        <span class="callback-label">Redirect Callback URL</span>
+                        <span class="callback-url-text">{{ item.callback_url }}</span>
+                    </div>
+                    <button type="button" class="btn-copy" onclick="copyCallback('{{ item.callback_url }}', this)">Copy</button>
+                </div>
+
+                <!-- Action Button -->
+                <div class="card-actions">
+                    {% if item.supports_oauth %}
+                    <form method="post" style="width: 100%;">
+                        {% csrf_token %}
+                        <input type="hidden" name="broker" value="{{ item.broker.name }}">
+                        <button type="submit" class="btn-action btn-primary">
+                            🔑 Login & Generate Token
+                        </button>
+                    </form>
+                    {% elif item.supports_direct_login %}
+                    <form method="post" style="width: 100%;">
+                        {% csrf_token %}
+                        <input type="hidden" name="broker" value="{{ item.broker.name }}">
+                        <button type="submit" class="btn-action btn-primary">
+                            🔑 Login & Generate Token
+                        </button>
+                    </form>
+                    {% else %}
+                    <a href="{% url 'admin:kalai_broker_change' item.broker.id %}" class="btn-action btn-secondary">
+                        ⚙️ Configure Account
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <p style="color: var(--text-sub); margin-bottom: 12px;">No broker accounts found.</p>
+                <a href="{% url 'admin:kalai_broker_add' %}" class="btn-nav">+ Add Account in Admin</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <footer>
+            <p>&copy; <span id="year"></span> DeltaZero Trading Engine</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        function copyCallback(text, btn) {
+            navigator.clipboard.writeText(text).then(function() {
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.style.background = '#10b981';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#10b981';
+                setTimeout(function() {
+                    btn.textContent = originalText;
+                    btn.style.background = '#1f2937';
+                    btn.style.color = '#e5e7eb';
+                    btn.style.borderColor = '#374151';
+                }, 2000);
+            }).catch(function() {
+                prompt('Copy Callback URL:', text);
+            });
+        }
+    </script>
+</body>
+
+</html>
