@@ -11,7 +11,6 @@ Windows Desktop Native Integration Layer:
 from __future__ import annotations
 
 import logging
-import os
 import sys
 import threading
 import webbrowser
@@ -44,7 +43,7 @@ def send_windows_toast(
 
     try:
         from windows_toasts import (
-            AudioUri,
+            AudioSource,
             InteractableWindowsToaster,
             Toast,
             ToastAudio,
@@ -56,7 +55,7 @@ def send_windows_toast(
         toast.text_fields = [title, body]
 
         if audio_chime:
-            toast.audio = ToastAudio(sound=AudioUri.Default, looping=False)
+            toast.audio = ToastAudio(sound=AudioSource.Default, looping=False)
 
         # Action button to open local visualizer
         target_vis = visualizer_url

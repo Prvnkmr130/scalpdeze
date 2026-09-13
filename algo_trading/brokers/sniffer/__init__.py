@@ -10,6 +10,7 @@ from .browser_sniffer import ScraplingBrowserSniffer, SniffedMarketDataStore
 from .network_failover import DualNicFailoverManager
 from .power_manager import WindowsPowerManager
 from .thermal_guard import ThermalGuard
+from .tray_applet import WindowsTrayApplet, send_windows_toast, setup_global_hotkey
 
 __all__ = [
     "ScraplingBrowserSniffer",
@@ -17,4 +18,7 @@ __all__ = [
     "DualNicFailoverManager",
     "WindowsPowerManager",
     "ThermalGuard",
+    "WindowsTrayApplet",
+    "send_windows_toast",
+    "setup_global_hotkey",
 ]

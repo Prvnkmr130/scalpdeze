@@ -54,6 +54,10 @@ dev = [
 DJANGO_SETTINGS_MODULE = "algo_trading.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
 [tool.ruff]
 line-length = 120
 target-version = "py314"

@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 import threading
 import time
 from datetime import datetime
@@ -189,6 +190,7 @@ class ScraplingBrowserSniffer:
         os.makedirs(self.profiles_dir, exist_ok=True)
 
         self._browser = None
+        self._playwright = None
         self._contexts: Dict[str, Any] = {}
         self._pages: Dict[str, Any] = {}
         self._running = False
@@ -199,11 +201,33 @@ class ScraplingBrowserSniffer:
 
     def toggle_visibility(self) -> bool:
         """
-        Toggles browser visibility (headful / headless) for operator inspection.
+        Toggles browser visibility (headful / headless / minimized / restored) for operator inspection.
         Returns the new visibility state (True = Visible, False = Hidden).
         """
         self._is_visible = not self._is_visible
         logger.info(f"[BROWSER_HOTKEY] Emergency browser visibility toggled to: {'VISIBLE' if self._is_visible else 'HIDDEN'}")
+
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                user32 = ctypes.windll.user32
+
+                def _enum_cb(hwnd, lparam):
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buf, length + 1)
+                        title = buf.value.lower()
+                        if any(kw in title for kw in ["chrome", "chromium", "playwright", "patchright"]):
+                            cmd = 9 if self._is_visible else 6  # SW_RESTORE (9) vs SW_MINIMIZE (6)
+                            user32.ShowWindow(hwnd, cmd)
+                    return True
+
+                WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+                user32.EnumWindows(WNDENUMPROC(_enum_cb), 0)
+            except Exception as e:
+                logger.debug(f"Window toggle notice: {e}")
+
         return self._is_visible
 
     async def _setup_route_stripping(self, page: Any) -> None:
@@ -246,6 +270,8 @@ class ScraplingBrowserSniffer:
 
             def on_frame_received(payload: Any):
                 try:
+                    if isinstance(payload, bytes):
+                        payload = payload.decode("utf-8", errors="ignore")
                     if isinstance(payload, str):
                         data = json.loads(payload)
                         self._process_sniffed_payload(data, account_id=account_id)
@@ -372,8 +398,8 @@ class ScraplingBrowserSniffer:
                 return None
 
         if self._browser is None:
-            p = await pw_module.async_playwright().start()
-            self._browser = await p.chromium.launch(
+            self._playwright = await pw_module.async_playwright().start()
+            self._browser = await self._playwright.chromium.launch(
                 headless=self.headless,
                 args=[
                     "--disable-blink-features=AutomationControlled",
@@ -385,7 +411,14 @@ class ScraplingBrowserSniffer:
             logger.info("Launched single Chromium process for context pooling.")
 
         profile_path = os.path.join(self.profiles_dir, f"{account_id}.json")
-        storage_state = profile_path if os.path.exists(profile_path) else None
+        storage_state = None
+        if os.path.exists(profile_path) and os.path.getsize(profile_path) > 10:
+            try:
+                with open(profile_path, "r", encoding="utf-8") as f:
+                    json.load(f)
+                storage_state = profile_path
+            except Exception:
+                logger.warning(f"[{account_id}] Corrupted session cache at {profile_path}; resetting.")
 
         context = await self._browser.new_context(
             storage_state=storage_state,
@@ -412,6 +445,35 @@ class ScraplingBrowserSniffer:
             logger.warning(f"[{account_id}] Navigation warning: {e}")
 
         return page
+
+    async def extract_dom_market_data(self, account_id: str, selectors: Optional[Dict[str, str]] = None) -> None:
+        """
+        Uses Scrapling Selector to parse market quotes and option chains directly from the DOM
+        as an instant fallback when WebSocket/XHR streams are silent.
+        """
+        page = self._pages.get(account_id)
+        if not page:
+            return
+
+        try:
+            from scrapling import Selector
+            html_content = await page.content()
+            sel = Selector(html_content)
+
+            if selectors:
+                price_sel = selectors.get("price")
+                sym_sel = selectors.get("symbol")
+                if price_sel and sym_sel:
+                    sym = sel.css(sym_sel).get()
+                    price = sel.css(price_sel).get()
+                    if sym and price:
+                        try:
+                            p_val = float(str(price).replace("$", "").replace(",", "").strip())
+                            self.data_store.push_tick(symbol=sym.strip(), last_price=p_val)
+                        except (ValueError, TypeError):
+                            pass
+        except Exception as e:
+            logger.debug(f"[{account_id}] Scrapling DOM extraction notice: {e}")
 
     async def soft_memory_recycle(self) -> None:
         """
@@ -453,5 +515,12 @@ class ScraplingBrowserSniffer:
             except Exception:
                 pass
             self._browser = None
+
+        if self._playwright:
+            try:
+                await self._playwright.stop()
+            except Exception:
+                pass
+            self._playwright = None
 
         logger.info("Scrapling browser sniffer sessions cleanly closed.")
